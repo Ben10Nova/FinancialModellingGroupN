@@ -7,13 +7,16 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from strategy import Params, load_prices, run, wealth
+from strategy import Params, load_live, load_prices, monthly, run, wealth
 
 FUND = '[fund name]'
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
 DEFAULTS = Params()
-HEADER_IMG = base64.b64encode((Path(__file__).parent / 'assets' / 'header.jpg').read_bytes()).decode()
+CRISES = [('global financial crisis', '2007-10-09', '2009-03-09'), ('euro debt crisis', '2011-04-29', '2011-10-03'),
+          ('q4 2018 selloff', '2018-09-20', '2018-12-24'), ('covid crash', '2020-02-19', '2020-03-23'),
+          ('2022 rate shock', '2022-01-03', '2022-10-12')]          # s&p 500 peak and trough closes
+TEAM = [('lucas_strobel.jpg', 'lucas strobel', 'inclusion and diversity officer'), ('cio2.jpg', '[name]', 'co-cio')]   # photo file in assets/, name, role
 
 st.set_page_config(page_title=FUND, layout='centered')
 st.markdown("""
@@ -37,10 +40,12 @@ table.plain td:first-child { text-align: left; }
 table.links, table.links tr, table.links td { border: 0 !important; background: none !important; }
 table.links td { vertical-align: top; padding: 0 30px 0 0; }
 table.links ul { margin: 0; padding-left: 22px; }
+table.stress td { white-space: nowrap; }
+table.team, table.team tr { border: 0 !important; background: none !important; } table.team { margin: 6px auto; } table.team td { border: 0 !important; text-align: center; padding: 0 28px; vertical-align: top; }
 [data-baseweb="input"], [data-baseweb="select"] > div, input { border-radius: 0 !important; background: #fff !important; }
 [data-baseweb="input"] { border: 2px inset #c0c0c0 !important; }
 [data-testid="stNumberInputStepDown"], [data-testid="stNumberInputStepUp"] { border-radius: 0 !important; background: #e0e0e0 !important; }
-.stButton button, .stFormSubmitButton button {
+.stButton button, .stFormSubmitButton button, .stDownloadButton button {
   border-radius: 0 !important; background: #e0e0e0 !important; border: 2px outset #f5f5f5 !important;
   padding: 1px 14px !important; min-height: 0 !important; box-shadow: none !important; }
 [data-testid="stForm"] { border: 1px solid #000; border-radius: 0; padding: 14px 16px; }
@@ -90,20 +95,27 @@ def get_prices():
     return load_prices()
 
 
+@st.cache_data(ttl=3600, show_spinner='loading live prices ...')
+def get_live():
+    px = load_live()
+    return run(px, Params(start='2026-01-01', end=str(px.index[-1].date())))
+
+
 @st.cache_data(show_spinner='running backtest ...')
 def get_results(**kw):
     return run(get_prices(), Params(**kw))
 
 
 # ---------------------------------------------------------------- masthead
-html(f'<p class="addr"><img src="data:image/jpeg;base64,{HEADER_IMG}" width="140" alt=""></p>')
 html(f'<h1 class="bh">{FUND}</h1>')
 html('<p class="addr">2270 financial modeling &middot; nova sbe</p><hr>')
 html(f"""<table class="links"><tr>
 <td><ul><li><a href="#thesis">thesis</a></li><li><a href="#assumptions">assumptions</a></li>
-<li><a href="#performance">performance</a></li><li><a href="#annual-returns">annual returns</a></li></ul></td>
-<td><ul><li><a href="#attribution">attribution</a></li><li><a href="#rules">rules</a></li>
-<li><a href="#risks">risks</a></li><li><a href="{REPO}">source code</a> &middot; <a href="{COLAB}">notebook</a></li></ul></td>
+<li><a href="#performance">performance</a></li><li><a href="#annual-returns">annual returns</a></li>
+<li><a href="#stress-tests">stress tests</a></li></ul></td>
+<td><ul><li><a href="#attribution">attribution</a></li><li><a href="#live-2026">live: 2026</a></li>
+<li><a href="#rules">rules</a></li><li><a href="#risks">risks</a></li><li><a href="#team">team</a></li>
+<li><a href="{REPO}">source code</a> &middot; <a href="{COLAB}">notebook</a></li></ul></td>
 </tr></table><hr>""")
 
 # ---------------------------------------------------------------- thesis
@@ -158,6 +170,11 @@ html(table_html(res['table'].rename(columns={'Strategy (net)': 'portfolio (net)'
 chart({'portfolio (net)': w_s, 's&p 500 tr': w_b}, 'growth of $1 (log)', log=True)
 chart({'portfolio': w_s / w_s.cummax() - 1, 's&p 500 tr': w_b / w_b.cummax() - 1}, 'drawdown', h=2.4,
       legend_loc='lower right')
+rf_d = (get_prices()['^IRX'] / 100 / 252).shift(1).loc[bt.index]
+csv = monthly(pd.DataFrame({'portfolio_net': bt.net, 'portfolio_gross': bt.gross, 'equity_sleeve': res['spy_only'].net,
+                            'spread_sleeve': res['pair_only'].net, 'sp500_tr': bench, 'rf': rf_d}))
+st.download_button('download monthly returns (csv)', csv.to_csv(index_label='month', float_format='%.6f'),
+                   file_name=f'monthly_returns_{y0}_{y1}.csv', mime='text/csv')
 
 # ---------------------------------------------------------------- annual returns
 section('annual-returns', 'annual returns')
@@ -170,6 +187,18 @@ html(f"""<table class="plain"><tr><th>year</th><th>portfolio</th><th>s&amp;p 500
 <tr><td>cumulative</td><td>{(1 + yr.Strategy).prod() - 1:,.0%}</td><td>{(1 + yr['S&P 500 TR']).prod() - 1:,.0%}</td><td></td></tr>
 </table>""")
 
+# ---------------------------------------------------------------- stress tests
+section('stress-tests', 'stress tests')
+html('<p>s&amp;p 500 peak-to-trough episodes, total return over each window.</p>')
+window = lambda r, a, b: (1 + r.loc[a:b].iloc[1:]).prod() - 1
+span = lambda a, b: f'{pd.Timestamp(a):%b %Y} &rarr; {pd.Timestamp(b):%b %Y}'.lower()
+rows = ''.join(f'<tr><td>{name}</td><td>{span(a, b)}</td>' + ''.join(f'<td>{window(r, a, b):.1%}</td>' for r in
+               [bench, bt.net, res['spy_only'].net, res['pair_only'].net]) + '</tr>'
+               for name, a, b in CRISES if pd.Timestamp(a) >= bt.index[0] and pd.Timestamp(b) <= bt.index[-1])
+html(f'<table class="plain stress"><tr><th>episode</th><th>window</th><th>s&amp;p 500 tr</th><th>portfolio</th>'
+     f'<th>equity sleeve</th><th>spread sleeve</th></tr>{rows}</table>' if rows else
+     '<p>no episode falls inside the selected years.</p>')
+
 # ---------------------------------------------------------------- attribution
 section('attribution', 'attribution')
 html('<p>each sleeve run in isolation, idle capital in t-bills.</p>')
@@ -180,6 +209,26 @@ chart({'combined': wealth(bt.net), 'equity sleeve': wealth(res['spy_only'].net),
        'spread sleeve': wealth(res['pair_only'].net)}, 'growth of $1 (log)', log=True)
 html(f'<p>positioning at the {y1} close: equity exposure <b>{res["exposure_now"]:.2f}x</b>, '
      f'spread pair for {y1 + 1}: <b>{"/".join(res["pair_now"]).lower()}</b>.</p>')
+
+# ---------------------------------------------------------------- live out-of-sample
+section('live-2026', 'live: 2026')
+html('<p>the rules were frozen at the 31 dec 2025 close. this section runs them, with notebook defaults, on data the '
+     'strategy was never fitted on: a true out-of-sample check, separate from the prospectus numbers.</p>')
+try:
+    live = get_live()
+    lb, lbench = live['bt'], live['bench_d']
+    lw_s, lw_b = wealth(lb.net), wealth(lbench)
+    stats_live = lambda r: (f'{(1 + r).prod() - 1:.1%}', f'{r.std() * 252 ** .5:.1%}',
+                            f'{(wealth(r) / wealth(r).cummax() - 1).min():.1%}')
+    rows = ''.join(f'<tr><td>{n}</td>' + ''.join(f'<td>{v}</td>' for v in stats_live(r)) + '</tr>'
+                   for n, r in [('portfolio (net)', lb.net), ('s&amp;p 500 tr', lbench)])
+    html(f'<p>1 jan 2026 &rarr; {lb.index[-1]:%d %b %Y}'.lower() + '</p>')
+    html(f'<table class="plain"><tr><th></th><th>return</th><th>volatility (ann.)</th><th>max drawdown</th></tr>{rows}</table>')
+    chart({'portfolio (net)': lw_s, 's&p 500 tr': lw_b}, 'growth of $1')
+    html(f'<p>current positioning: equity exposure <b>{lb.w_spy.iloc[-1]:.2f}x</b>, spread pair '
+         f'<b>{"/".join(live["pair_now"]).lower()}</b>.</p>')
+except Exception:
+    html('<p><i>live data unavailable right now (yahoo rate limit). reload in a minute.</i></p>')
 
 # ---------------------------------------------------------------- rules, risks
 section('rules', 'rules')
@@ -198,7 +247,16 @@ html(f"""<p>- leverage and shorting required; gross exposure can exceed 4x.</p>
 <p>- selection bias: the low-beta pair rule was formulated after observing defensive-sector pairs; alternative
 selection rules did not add value.</p>
 <p>- monthly rebalancing lags sudden volatility spikes; low exposure after crashes misses sharp rebounds.</p>
-<p>- yahoo finance data, fixed cost assumptions, no taxes.</p><hr>""")
+<p>- yahoo finance data, fixed cost assumptions, no taxes.</p>""")
+
+# ---------------------------------------------------------------- team
+def photo(name):
+    f = Path(__file__).parent / 'assets' / name
+    return f'<img src="data:image/jpeg;base64,{base64.b64encode(f.read_bytes()).decode()}" width="140" alt=""><br>' if f.exists() else ''
+
+
+section('team', 'team')
+html('<table class="team"><tr>' + ''.join(f'<td>{photo(f)}{n}<br><i>{r}</i></td>' for f, n, r in TEAM) + '</tr></table><hr>')
 
 # ---------------------------------------------------------------- footer
 html(f"""<p class="fine">data: yahoo finance (split/dividend adjusted), ^SP500TR, ^IRX. statistics on monthly returns;
