@@ -140,7 +140,7 @@ with st.form('assumptions'):
     cost = c1.number_input('trading cost (bp per unit traded)', 0, 100, int(DEFAULTS.cost * 1e4), 5, key='cost')
     y0 = c1.selectbox('start year', list(range(2006, 2025)), 0, key='y0')
     pair_on = c2.checkbox('include sector spread', True, key='pair_on')
-    size = c2.number_input('spread size per leg (x)', 0.25, 2.0, DEFAULTS.pair_size, 0.25, key='size')
+    size = c2.number_input('spread size per leg, avg (x)', 0.25, 2.0, DEFAULTS.pair_size, 0.25, key='size')
     fin = c2.number_input('financing spread over t-bills (bp p.a.)', 0, 500, int(DEFAULTS.fin_spread * 1e4), 25, key='fin')
     y1 = c2.selectbox('end year', list(range(2007, 2026)), 18, key='y1')
     st.form_submit_button('run')
@@ -232,13 +232,15 @@ except Exception:
 
 # ---------------------------------------------------------------- rules, risks
 section('rules', 'rules')
-html(f"""<p>1: equity sleeve. at each month-end, exposure = {tv:.0f}% / realized volatility (21 trading days,
+html(f"""<p>1: risk budget. one {tv:.0f}% volatility budget for the whole portfolio. the spread sleeve's realized
+volatility (63 trading days) is taken out first; the equity sleeve gets the rest.</p>
+<p>2: equity sleeve. at each month-end, exposure = remaining budget / spy realized volatility (21 trading days,
 annualized), capped at {lev:.2f}x. idle cash earns the t-bill rate; leverage is financed at t-bill + {fin} bp.</p>
-<p>2: spread sleeve. at each year-end, select the two lowest-beta sector etfs vs spy (trailing 1y). daily z-score of
-the log price ratio vs its 60-day mean: enter at |z| &gt; 2 (long cheap, short rich, {size:.2f}x per leg), exit at
-|z| &lt; 0.5. a newly selected pair starts flat.</p>
-<p>3: execution. signals use closes up to day t; positions earn from t+1.</p>
-<p>4: costs. {cost} bp per unit traded, 25 bp p.a. borrow fee on shorts.</p>""")
+<p>3: spread sleeve. at each year-end, select the two lowest-beta sector etfs vs spy (trailing 1y). daily z-score of
+the log price ratio vs its 60-day mean: enter at |z| &gt; 2 (long cheap, short rich), exit at |z| &lt; 0.5. legs are
+sized beta-neutral from the same prior-year betas, {2 * size:.2f}x gross. a newly selected pair starts flat.</p>
+<p>4: execution. signals use closes up to day t; positions earn from t+1.</p>
+<p>5: costs. {cost} bp per unit traded, 25 bp p.a. borrow fee on shorts.</p>""")
 
 mdd = res['table'].loc['Max drawdown (monthly)', 'Strategy (net)']
 section('risks', 'risks')
@@ -247,6 +249,7 @@ html(f"""<p>- leverage and shorting required; gross exposure can exceed 4x.</p>
 <p>- selection bias: the low-beta pair rule was formulated after observing defensive-sector pairs; alternative
 selection rules did not add value.</p>
 <p>- monthly rebalancing lags sudden volatility spikes; low exposure after crashes misses sharp rebounds.</p>
+<p>- realized daily volatility can exceed the budget in sudden spikes, because exposure is reset monthly.</p>
 <p>- yahoo finance data, fixed cost assumptions, no taxes.</p>""")
 
 # ---------------------------------------------------------------- team

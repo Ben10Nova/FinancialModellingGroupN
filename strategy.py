@@ -17,6 +17,7 @@ class Params:
     target_vol: float = 0.15
     vol_days: int = 21
     max_lev: float = 2.0
+    pair_vol_days: int = 63
     beta_years: int = 1
     z_win: int = 60
     z_in: float = 2.0
@@ -48,9 +49,16 @@ def month_end_flag(idx):
     return ~idx.to_period('M').duplicated(keep='last')          # last trading day of each month
 
 
-def spy_exposure(px, p):
+def spy_exposure(px, p, pair_ret=None):
+    # one risk budget: the spread sleeve's realised vol is taken out first, the equity sleeve gets the rest
     vol = px['SPY'].pct_change().rolling(p.vol_days).std() * np.sqrt(252)
-    return (p.target_vol / vol).clip(upper=p.max_lev)
+    budget = p.target_vol if pair_ret is None else \
+             np.sqrt((p.target_vol ** 2 - (pair_ret.rolling(p.pair_vol_days).std() * np.sqrt(252)) ** 2).clip(lower=0))
+    return (budget / vol).clip(upper=p.max_lev)
+
+
+def pair_returns(px, P):
+    return (P.shift(1) * px[SECTORS].pct_change()).sum(axis=1)  # positions set at t-1 earn day t
 
 
 def sector_betas(px, lo, hi):
@@ -84,18 +92,23 @@ def pair_targets(px, p):
     z_active = pd.Series(np.nan, index=px.index)
     chosen = {y: lowbeta_pick(px, y, p.beta_years) for y in range(int(p.start[:4]), hold_year.max() + 1)}
     for (a, b), ys in groupby(chosen, key=chosen.get):         # consecutive years with the same pair = one block
-        m = np.isin(hold_year, list(ys))
+        ys = list(ys)
+        m = np.isin(hold_year, ys)
         z = zscore(px, a, b, p.z_win).where(m)                   # nan outside the block, so a new pair starts flat
         pos = positions(z, p.z_in, p.z_out)
-        tgt.loc[m, a] += pos[m]
-        tgt.loc[m, b] -= pos[m]
+        for y in ys:                                             # beta-neutral legs from the prior year's betas
+            my = hold_year == y
+            be = sector_betas(px, str(y - 1), str(y - 1))
+            wa, wb = 2 * be[b] / (be[a] + be[b]), 2 * be[a] / (be[a] + be[b])   # wa*beta_a = wb*beta_b, wa + wb = 2
+            tgt.loc[my, a] += pos[my] * wa
+            tgt.loc[my, b] -= pos[my] * wb
         z_active[m] = z[m]
     return tgt, chosen, z_active
 
 
 def backtest(px, p, use_spy=True, pair_size=None):
-    e = spy_exposure(px, p) if use_spy else 0 * px['SPY']
     P = pair_targets(px, p)[0] * (p.pair_size if pair_size is None else pair_size)
+    e = spy_exposure(px, p, pair_returns(px, P)) if use_spy else 0 * px['SPY']
     rf_d = (px['^IRX'] / 100 / 252).shift(1)
 
     idx = px.loc[:p.end].index[px.index.searchsorted(pd.Timestamp(p.start)) - 1:]   # from the last close before start
@@ -160,8 +173,8 @@ def run(px, p=Params()):
                             'Combined strategy': st(bt.net)})
     yearly = pd.DataFrame({'Strategy': (1 + bt.net).groupby(bt.index.year).prod() - 1,
                            'S&P 500 TR': (1 + bench_d).groupby(bench_d.index.year).prod() - 1})
-    chosen = pair_targets(px, p)[1]
+    P, chosen, _ = pair_targets(px, p)
     yearly['Pair held'] = [('/'.join(chosen[y]) if p.pair_size > 0 else '–') for y in yearly.index]
     return dict(bt=bt, spy_only=spy_only, pair_only=pair_only, bench_d=bench_d, table=table, sleeves=sleeves,
-                yearly=yearly, exposure_now=float(spy_exposure(px, p).loc[:p.end].iloc[-1]),
+                yearly=yearly, exposure_now=float(spy_exposure(px, p, pair_returns(px, P * p.pair_size)).loc[:p.end].iloc[-1]),
                 pair_now=chosen[max(chosen)])
