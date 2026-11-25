@@ -46,7 +46,10 @@ def load_live(start='2024-01-01'):
 
 
 def month_end_flag(idx):
-    return ~idx.to_period('M').duplicated(keep='last')          # last trading day of each month
+    me = ~idx.to_period('M').duplicated(keep='last')            # last trading day of each month
+    if len(idx) and idx[-1] != idx[-1] + pd.offsets.BMonthEnd(0):
+        me[-1] = False                                          # live data: today is not a month-end just because it is the last row
+    return me
 
 
 def spy_exposure(px, p, pair_ret=None):
@@ -125,9 +128,10 @@ def backtest(px, p, use_spy=True, pair_size=None):
         if i == 0 or me[i]: tgt[0] = e[i]                       # spy: reset at month-end
         if i == 0 or (P[i] != P[i - 1]).any(): tgt[1:] = P[i]   # pair: trade only when the target changes
         turn = np.abs(tgt - drift).sum()
-        rows.append((gross, gross - turn * p.cost, turn, tgt[0], np.abs(tgt).sum()))
+        rows.append((gross, gross - turn * p.cost, turn, tgt[0], np.abs(tgt).sum(), *tgt))
         w = tgt
-    out = pd.DataFrame(rows, index=idx, columns=['gross', 'net', 'turnover', 'w_spy', 'gross_exposure'])
+    out = pd.DataFrame(rows, index=idx, columns=['gross', 'net', 'turnover', 'w_spy', 'gross_exposure']
+                       + [f'w_{a}' for a in ASSETS])                    # target weights after each close
     return out.iloc[1:]
 
 
