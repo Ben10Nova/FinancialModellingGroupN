@@ -4,13 +4,14 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
+from matplotlib.dates import MonthLocator, num2date
 from matplotlib.ticker import FuncFormatter, NullLocator
 import pandas as pd
 import streamlit as st
 
 from strategy import ASSETS, Params, load_live, load_prices, monthly, pair_returns, pair_targets, run, spy_exposure, wealth
 
-FUND, FUND_LONG = 'MVP', 'Managed Volatility Portfolio Strategies'
+FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
 ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
@@ -21,6 +22,7 @@ CRISES = [('global financial crisis', '2007-10-09', '2009-03-09'), ('euro debt c
           ('2022 rate shock', '2022-01-03', '2022-10-12')]          # s&p 500 peak and trough closes
 TEAM = [('lucas s', '[title]'), ('ben s', '[title]'), ('katha g', '[title]'), ('noah vr', '[title]'),
         ('henrik t', '[title]'), ('chris w', '[title]')]
+BIO = '[short bio: background, role at mvp strategies and areas of focus. two to three sentences.]'
 INK, MUTED, HAIR = '#101924', '#555b63', '#d7d7d7'
 S1, S2, S3 = '#0b2648', '#848a90', '#a36d34'                   # portfolio, s&p / equity sleeve, spread sleeve
 
@@ -45,7 +47,7 @@ html, body, .stApp, .stApp *:where(:not([data-testid="stIconMaterial"])) { font-
 .stApp { background: var(--paper); }
 .stApp * { transition: none !important; animation: none !important; }
 [data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"],
-[data-testid="stDecoration"], footer, #MainMenu, [data-testid="stHeaderActionElements"],
+[data-testid="stDecoration"], footer, #MainMenu, [data-testid="stHeaderActionElements"], [data-testid="stElementToolbar"],
 [data-testid="stStatusWidget"] { display: none !important; }
 [data-testid="stHeader"] { background: transparent !important; }
 .block-container { max-width: 860px; padding: 6rem 1.25rem 6rem; }
@@ -75,7 +77,7 @@ p, li, label { font-size: 15px !important; line-height: 1.6; }
 .home { min-height: calc(100vh - 14rem); display: flex; flex-direction: column; text-align: center; }
 .home .mid { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
 .home p.fine { max-width: 90ch; margin: 0 auto 6px; }
-h1.bh { font-family: var(--serif) !important; font-weight: 500; font-size: 96px !important; line-height: 1; letter-spacing: .02em;
+h1.bh { font-family: var(--serif) !important; font-weight: 500; font-size: 84px !important; line-height: 1; letter-spacing: .01em;
   text-align: center; margin: 0; padding: 0 !important; }
 p.long { font-family: var(--serif) !important; font-size: 21px !important; text-align: center; margin: 10px 0 0; }
 p.addr { text-align: center; color: var(--muted) !important; margin: 10px 0 0; }
@@ -145,12 +147,19 @@ p.chart-head i { display: inline-block; width: 14px; height: 2px; }
 
 /* team */
 table.team, table.team tr, table.team td { border: 0 !important; background: none !important; }
-table.team { width: 100%; table-layout: fixed; border-spacing: 0; margin: 6px 0; }
-table.team td { text-align: left; vertical-align: top; padding: 0 16px 0 0; white-space: normal; }
-table.team td:last-child { padding-right: 0; }
+table.team { width: calc(100% + 32px); table-layout: fixed; border-collapse: separate !important; border-spacing: 16px 0;
+  margin: 6px -16px; }
+table.team td { text-align: left; vertical-align: top; padding: 0 !important; white-space: normal; }
 div.ph { width: 100%; aspect-ratio: 4/5; margin: 0 0 8px; background: var(--panel); border: 1px solid var(--hairline);
   display: grid; place-items: center; font-family: var(--mono) !important; font-size: 12px; letter-spacing: .08em; color: var(--muted) !important; }
 table.team b { font-size: 13.5px; font-weight: 600; }
+div.ph.sm { width: 64px; aspect-ratio: 4/5; margin: 0; }
+div.ph.off, p.off { opacity: .35; }
+div.ph.big { aspect-ratio: 4/5; max-width: 320px; font-size: 18px; margin-bottom: 14px; }
+p.mname { font-family: var(--serif) !important; font-size: 28px !important; line-height: 1.2; margin: 0; }
+.st-key-teamlist [data-testid="stVerticalBlock"] { gap: 0 !important; }
+.st-key-teamlist p.note { margin: 0 !important; }
+p.bio { max-width: 52ch; border-top: 1px solid var(--hairline); padding-top: 12px; margin-top: 14px; }
 table.team i { font-style: normal; font-size: 12px !important; color: var(--muted) !important; display: block; }
 
 /* investor account */
@@ -162,11 +171,12 @@ table.kpi span.v { display: block; font-family: var(--mono) !important; font-siz
 table.kpi span.v.neg { color: var(--negative) !important; }
 
 @media (max-width: 640px) {
-  h1.bh { font-size: 64px !important; } p.long { font-size: 17px !important; } .stApp h3 { font-size: 28px !important; }
-  table.team { display: block; } table.team tbody, table.team tr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 12px; }
+  h1.bh { font-size: 46px !important; } p.long { font-size: 17px !important; } .stApp h3 { font-size: 28px !important; }
+  table.team { display: block; width: 100%; margin: 6px 0; } table.team tbody, table.team tr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 12px; }
   table.team td { padding: 0; }
   table.plain th.wcol, table.plain td.wcol { display: none; }
   table.plain span.win { display: block; font-family: var(--mono) !important; font-size: 11px !important; color: var(--muted) !important; }
+  [data-testid="stColumn"]:has(.st-key-teamlist) { display: none !important; }
   table.kpi tr { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   table.kpi span.v { font-size: 18px !important; }
 }
@@ -226,6 +236,8 @@ def chart(title, series, kind='growth', h=2.9):
     else:                                                          # dollar values, linear
         dec = 2 if max(s.max() for _, s, _ in series) < 10 else 0
         ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'${v:,.{dec}f}'))
+        ax.xaxis.set_major_locator(MonthLocator())
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: num2date(v).strftime('%b').lower()))
     fig.tight_layout(pad=.3)
     st.pyplot(fig)
     plt.close(fig)
@@ -427,8 +439,27 @@ def risks():
 def team():
     heading('team')
     initials = lambda n: ''.join(w[0] for w in n.split())
-    html('<table class="team"><tr>' + ''.join(f'<td><div class="ph">{initials(n)}</div><b>{n}</b><i>{t}</i></td>'
-                                              for n, t in TEAM) + '</tr></table>')
+    sel = st.session_state.get('member', 0)
+    html(f'<style>.st-key-m{sel} button * {{ font-weight: 600 !important; color: var(--ink) !important; }}'
+         f'[class*="st-key-m"]:not(.st-key-m{sel}) button * {{ color: var(--muted) !important; }}'
+         '[class*="st-key-m"] button * { text-decoration: none !important; font-size: 15px !important; }</style>')
+    left, right = st.columns([2, 3], gap='large')
+    with left, st.container(height=520, border=False, key='teamlist'):
+        for k, (n, t) in enumerate(TEAM):
+            c1, c2 = st.columns([1, 2], vertical_alignment='center')
+            c1.markdown(f'<div class="ph sm {"" if k == sel else "off"}">{initials(n)}</div>', unsafe_allow_html=True)
+            if c2.button(n, key=f'm{k}', type='tertiary'):
+                st.session_state['member'] = k
+                st.rerun()
+            c2.markdown(f'<p class="note {"" if k == sel else "off"}">{t}</p>', unsafe_allow_html=True)
+    with right:
+        n, t = TEAM[sel]
+        html(f'<div class="ph big">{initials(n)}</div><p class="mname">{n}</p><p class="note">{t}</p><p class="bio">{BIO}</p>')
+        prev, nxt = st.columns(2)
+        if prev.button('← previous', key='prev', type='tertiary'):
+            st.session_state['member'] = (sel - 1) % len(TEAM); st.rerun()
+        if nxt.button('next →', key='next', type='tertiary'):
+            st.session_state['member'] = (sel + 1) % len(TEAM); st.rerun()
 
 
 def investor():

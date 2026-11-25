@@ -46,7 +46,10 @@ def load_live(start='2024-01-01'):
 
 
 def month_end_flag(idx):
-    return ~idx.to_period('M').duplicated(keep='last')          # last trading day of each month
+    me = ~idx.to_period('M').duplicated(keep='last')            # last trading day of each month
+    if len(idx) and idx[-1] != idx[-1] + pd.offsets.BMonthEnd(0):
+        me[-1] = False                                          # live data: today is not a month-end just because it is the last row
+    return me
 
 
 def spy_exposure(px, p, pair_ret=None):
