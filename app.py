@@ -1,4 +1,6 @@
+import base64
 from dataclasses import asdict
+from io import BytesIO
 import json
 from pathlib import Path
 import matplotlib
@@ -204,7 +206,7 @@ p.chart-head i { display: inline-block; width: 14px; height: 2px; }
 .stApp .st-key-stress button[kind="tertiary"] * { font-size: 13.5px !important; text-align: left; }
 .st-key-stress p.win { display: none; }
 [role="dialog"] :not([data-testid="stMarkdown"]) > [data-testid="stMarkdownContainer"] p { font-family: var(--serif) !important; font-weight: 500 !important; font-size: 28px !important; }
-[role="dialog"] [data-testid="stImage"], [role="dialog"] [data-testid="stImage"] img { width: 100% !important; height: auto !important; }
+img.chart { display: block; width: 100%; height: auto; margin: 6px 0 0; }
 
 /* soft ios layer: rounded grey panels, pill buttons, segmented control, frosted pop-up backdrop. tables and charts stay plain */
 .stApp .st-key-knobs, .stApp [data-testid="stForm"] { background: var(--soft) !important; border: 0 !important; border-radius: var(--r) !important;
@@ -234,17 +236,16 @@ p.chart-head i { display: inline-block; width: 14px; height: 2px; }
 [data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) { flex-wrap: nowrap !important; }
 [data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) > [data-testid="stColumn"] { min-width: 0 !important; }
 [data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) .stButton { display: flex; justify-content: flex-end; }
-table.kpi { border-collapse: separate !important; border-spacing: 10px 0; margin: 0 -10px 8px !important; width: calc(100% + 20px) !important; }
-.stApp table.kpi td { background: var(--soft) !important; border-radius: 16px; padding: 14px 16px !important; }
-p.status { display: inline-block; background: var(--soft); border-radius: 980px; padding: 6px 16px !important; }
 
 /* investor account */
-table.kpi { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 8px; }
-table.kpi, table.kpi tr, table.kpi td { border: 0 !important; background: none !important; }
-table.kpi td { padding: 0 16px 0 0; vertical-align: top; }
-table.kpi span.k { display: block; font-size: 11px !important; letter-spacing: .04em; color: var(--muted) !important; }
-table.kpi span.v { display: block; font-family: var(--mono) !important; font-size: 22px !important; font-weight: 500; }
-table.kpi span.v.neg { color: var(--negative) !important; }
+.hero { margin: 28px 0 8px; }
+.hero p { margin: 0 !important; }
+.hero p.k { font-size: 12.5px !important; color: var(--muted) !important; }
+.hero p.big { font-family: var(--serif) !important; font-size: 64px !important; font-weight: 400; line-height: 1.1;
+  letter-spacing: -.02em; font-variant-numeric: tabular-nums lining-nums; margin: 2px 0 6px !important; }
+.hero p.chg, .hero p.chg span { font-size: 14px !important; }
+.hero p.chg span:first-child { font-family: var(--mono) !important; font-weight: 500; }
+.hero span.neg { color: var(--negative) !important; } .hero span.dim { color: var(--muted) !important; }
 
 @media (max-width: 640px) {
   h1.bh { font-size: 46px !important; } p.long { font-size: 17px !important; } .stApp h3 { font-size: 28px !important; }
@@ -252,9 +253,7 @@ table.kpi span.v.neg { color: var(--negative) !important; }
   .stApp .st-key-stress button[kind="tertiary"] * { font-size: 12.5px !important; line-height: 1.35; }
   .st-key-stress p.c { font-size: 11.5px !important; } .st-key-stress p.th { font-size: 10px !important; }
   .st-key-stress p.win { display: block; white-space: nowrap; font-size: 10px !important; font-family: var(--mono) !important; color: var(--muted) !important; }
-  table.kpi { margin: 0 0 8px !important; width: 100% !important; }
-  table.kpi tr { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  table.kpi span.v { font-size: 18px !important; }
+  .hero p.big { font-size: 46px !important; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -320,7 +319,9 @@ def chart(title, series, kind='growth', h=2.9, bands=()):
         ax.xaxis.set_major_locator(MonthLocator())
         ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: num2date(v).strftime('%b').lower()))
     fig.tight_layout(pad=.3)
-    st.pyplot(fig)
+    buf = BytesIO()                            # inline png: no separate media file that a redeploy or reload can lose
+    fig.savefig(buf, format='png')
+    html(f'<img class="chart" alt="" src="data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}">')
     plt.close(fig)
 
 
@@ -772,13 +773,14 @@ def investor():
     value = dep * (1 + lb.net).cumprod()
     bench_value = dep * (1 + lbench).cumprod()
     profit = value.iloc[-1] - dep
-    note(f'demo account &middot; ${dep:,.0f} invested at the 31 dec 2025 close, {tv:.0%} risk budget &middot; '
-         f'as of the {lb.index[-1]:%d %b %Y} close'.lower())
-    kpi = lambda k, v, cls='': f'<td><span class="k">{k}</span><span class="v {cls}">{v}</span></td>'
-    pr, neg = num(profit, 'usd')
-    html('<table class="kpi"><tr>' + kpi('balance', num(value.iloc[-1], 'usd')[0]) + kpi('profit', pr, neg)
-         + kpi('return', num(value.iloc[-1] / dep - 1)[0], neg)
-         + kpi('s&amp;p 500 tr, same deposit', num(bench_value.iloc[-1], 'usd')[0]) + '</tr></table>')
+    signed = lambda v, kind: ('+' if v >= 0 else '') + num(v, kind)[0]
+    neg = num(profit)[1]
+    html(f'<div class="hero"><p class="k">balance &middot; as of the {lb.index[-1]:%d %b %Y} close</p>'.lower()
+         + f'<p class="big">{num(value.iloc[-1], "usd")[0]}</p>'
+         f'<p class="chg"><span class="{neg}">{signed(profit, "usd")} &nbsp;{signed(value.iloc[-1] / dep - 1, "pct")}</span>'
+         f'<span class="dim"> since your ${dep:,.0f} deposit &middot; the s&amp;p 500 tr would be at '
+         f'{num(bench_value.iloc[-1], "usd")[0]} ({signed(bench_value.iloc[-1] / dep - 1, "pct")}) &middot; '
+         f'{tv:.0%} risk budget</span></p></div>')
     chart('account value', [('portfolio (net)', pd.concat([pd.Series(dep, index=[pd.Timestamp('2025-12-31')]), value]), S1),
                             ('s&amp;p 500 tr', pd.concat([pd.Series(dep, index=[pd.Timestamp('2025-12-31')]), bench_value]), S2)],
           kind='line')
