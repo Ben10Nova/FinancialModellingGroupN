@@ -61,7 +61,7 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
 :root { --paper:#ffffff; --ink:#101924; --muted:#555b63; --hairline:#d7d7d7; --panel:#f5f5f5; --inputline:#7c8186;
-  --negative:#8c2d2b; --serif:"Newsreader",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --negative:#8c2d2b; --soft:#f5f5f7; --line:#d2d2d7; --r:18px; --serif:"Newsreader",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,monospace; }
 html, body, .stApp, .stApp *:where(:not([data-testid="stIconMaterial"])), [role="dialog"] *:where(:not([data-testid="stIconMaterial"])) { font-family: var(--sans) !important; color: var(--ink); }
 .stApp { background: var(--paper); }
@@ -138,7 +138,6 @@ table.plain tr.first td { border-top: 1px solid var(--ink) !important; }
 table.plain.compact td { padding-top: 4px; padding-bottom: 4px; }
 
 /* form */
-[class*="st-key-inv_"] button * { text-decoration: none !important; color: var(--muted) !important; }
 .st-key-knobs { padding: 16px; gap: 10px !important; }
 .st-key-knobs, [data-testid="stForm"] { background: var(--panel); border: 1px solid var(--hairline); border-top: 1px solid var(--ink);
   border-radius: 0; padding: 16px; }
@@ -204,9 +203,40 @@ p.chart-head i { display: inline-block; width: 14px; height: 2px; }
 .st-key-stress p.dim { font-size: 12.5px !important; color: var(--muted) !important; text-align: left; } .st-key-stress p.th.l { text-align: left; }
 .stApp .st-key-stress button[kind="tertiary"] * { font-size: 13.5px !important; text-align: left; }
 .st-key-stress p.win { display: none; }
-[role="dialog"] { border-radius: 0 !important; }
 [role="dialog"] :not([data-testid="stMarkdown"]) > [data-testid="stMarkdownContainer"] p { font-family: var(--serif) !important; font-weight: 500 !important; font-size: 28px !important; }
 [role="dialog"] [data-testid="stImage"], [role="dialog"] [data-testid="stImage"] img { width: 100% !important; height: auto !important; }
+
+/* soft ios layer: rounded grey panels, pill buttons, segmented control, frosted pop-up backdrop. tables and charts stay plain */
+.stApp .st-key-knobs, .stApp [data-testid="stForm"] { background: var(--soft) !important; border: 0 !important; border-radius: var(--r) !important;
+  padding: 20px !important; }
+.stApp [data-testid="stNumberInputContainer"], .stApp [data-baseweb="select"] > div, .stApp [data-testid="stTextInputRootElement"] {
+  border: 1px solid var(--line) !important; border-radius: 10px !important; overflow: hidden; }
+.stApp [data-testid="stNumberInputStepDown"], .stApp [data-testid="stNumberInputStepUp"] { border-left: 1px solid var(--line) !important; }
+.stApp button[kind="primaryFormSubmit"], .stApp button[kind="primary"] { border-radius: 980px !important; padding: 0 26px !important; }
+.stApp [data-testid="stCheckbox"] span { border-radius: 6px !important; }
+[data-testid="stButtonGroup"] > div { background: #e8e8ed; border-radius: 10px; padding: 2px; gap: 0 !important; display: inline-flex !important; }
+.stApp [data-testid="stButtonGroup"] button { border: 0 !important; border-radius: 8px !important; background: transparent !important;
+  min-height: 30px !important; padding: 0 22px !important; box-shadow: none !important; }
+.stApp [data-testid="stButtonGroup"] button[kind*="Active"] { background: #fff !important; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04) !important; }
+.stApp [data-testid="stButtonGroup"] button * { font-size: 13px !important; color: var(--ink) !important; font-weight: 500; }
+.stApp [class*="st-key-dv_"] button[kind="tertiary"] { margin: 0 -12px; width: calc(100% + 24px); padding: 10px 12px 10px 40px !important;
+  border-radius: 14px !important; transition: background .2s !important; }
+.stApp [class*="st-key-dv_"] button[kind="tertiary"]::before { left: 12px; top: 10px; }
+.stApp [class*="st-key-dv_"] button[kind="tertiary"]:hover { background: var(--soft) !important; }
+.stApp [class*="st-key-dv_"] button[kind="tertiary"]:hover * { color: var(--ink) !important; }
+.stApp .st-key-stress [data-testid="stHorizontalBlock"]:has(button) { border-radius: 12px; transition: background .2s !important; }
+.stApp .st-key-stress [data-testid="stHorizontalBlock"]:has(button):hover { background: var(--soft); }
+.stApp .st-key-stress button[kind="tertiary"]:hover { background: none !important; }
+.stApp .st-key-stress button[kind="tertiary"]:hover * { color: var(--ink) !important; }
+[data-testid="stDialog"] > div { background: rgba(250,250,252,.45) !important; backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); }
+[role="dialog"] { border-radius: 22px !important; border: 0 !important; box-shadow: 0 24px 70px rgba(0,0,0,.16), 0 0 0 .5px rgba(0,0,0,.06) !important; }
+.stApp [data-testid="stSidebar"] { border-right: 1px solid rgba(0,0,0,.08) !important; }
+[data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) { flex-wrap: nowrap !important; }
+[data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) > [data-testid="stColumn"] { min-width: 0 !important; }
+[data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) .stButton { display: flex; justify-content: flex-end; }
+table.kpi { border-collapse: separate !important; border-spacing: 10px 0; margin: 0 -10px 8px !important; width: calc(100% + 20px) !important; }
+.stApp table.kpi td { background: var(--soft) !important; border-radius: 16px; padding: 14px 16px !important; }
+p.status { display: inline-block; background: var(--soft); border-radius: 980px; padding: 6px 16px !important; }
 
 /* investor account */
 table.kpi { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 8px; }
@@ -222,7 +252,8 @@ table.kpi span.v.neg { color: var(--negative) !important; }
   .stApp .st-key-stress button[kind="tertiary"] * { font-size: 12.5px !important; line-height: 1.35; }
   .st-key-stress p.c { font-size: 11.5px !important; } .st-key-stress p.th { font-size: 10px !important; }
   .st-key-stress p.win { display: block; white-space: nowrap; font-size: 10px !important; font-family: var(--mono) !important; color: var(--muted) !important; }
-  table.kpi tr { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  table.kpi { margin: 0 0 8px !important; width: 100% !important; }
+  table.kpi tr { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   table.kpi span.v { font-size: 18px !important; }
 }
 </style>
@@ -702,6 +733,11 @@ addEventListener('resize', fit); fit();
 </script>""".replace('PEOPLE', people), height=440)
 
 
+def save_settings():
+    ss = st.session_state
+    ss['inv_dep'], ss['inv_tv'], ss['inv_view'] = ss['f_dep'], ss['f_tv'] / 100, 'account'
+
+
 def investor():
     heading('investor login')
     if not st.session_state.get('investor'):
@@ -715,20 +751,17 @@ def investor():
         return
     ss = st.session_state
     dep, tv = ss.get('inv_dep', DEMO_DEPOSIT), ss.get('inv_tv', DEFAULTS.target_vol)
-    html(f'<style>.st-key-inv_{ss.get("inv_view") or "account"} button * {{ color: var(--ink) !important; font-weight: 600; }}</style>')
-    menu = st.columns([1, 1, 1, 5])
-    for col, (label, view) in zip(menu, [('account', 'account'), ('settings', 'settings'), ('log out', None)]):
-        if col.button(label, key=f'inv_{view or "logout"}', type='tertiary'):
-            ss['investor'], ss['inv_view'] = view is not None, view
-            st.rerun()
-    if ss.get('inv_view') == 'settings':
+    a, b = st.columns([4, 1], vertical_alignment='center')
+    view = a.segmented_control('view', ['account', 'settings'], default='account', key='inv_view', label_visibility='collapsed')
+    if b.button('log out', key='inv_logout', type='tertiary'):
+        ss['investor'] = False
+        st.rerun()
+    if view == 'settings':
         with st.form('inv_settings'):
-            new_dep = st.number_input('deposit at the 31 dec 2025 close ($)', 100.0, 10_000_000.0, dep, 100.0, format='%.0f')
-            new_tv = st.select_slider('risk budget: volatility target (% p.a.)', list(range(5, 31)), round(tv * 100))
+            st.number_input('deposit at the 31 dec 2025 close ($)', 100.0, 10_000_000.0, dep, 100.0, format='%.0f', key='f_dep')
+            st.select_slider('risk budget: volatility target (% p.a.)', list(range(5, 31)), round(tv * 100), key='f_tv')
             note('the whole account is recalculated from 1 jan 2026 with these settings.')
-            if st.form_submit_button('save', type='primary'):
-                ss['inv_dep'], ss['inv_tv'], ss['inv_view'] = new_dep, new_tv / 100, 'account'
-                st.rerun()
+            st.form_submit_button('save', type='primary', on_click=save_settings)
         return
     try:
         live, px = get_live(tv)
