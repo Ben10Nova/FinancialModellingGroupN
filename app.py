@@ -1,4 +1,6 @@
+import base64
 from dataclasses import asdict
+from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -11,6 +13,7 @@ FUND = '[fund name]'
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
 DEFAULTS = Params()
+HEADER_IMG = base64.b64encode((Path(__file__).parent / 'assets' / 'header.jpg').read_bytes()).decode()
 
 st.set_page_config(page_title=FUND, layout='centered')
 st.markdown("""
@@ -93,6 +96,7 @@ def get_results(**kw):
 
 
 # ---------------------------------------------------------------- masthead
+html(f'<p class="addr"><img src="data:image/jpeg;base64,{HEADER_IMG}" width="140" alt=""></p>')
 html(f'<h1 class="bh">{FUND}</h1>')
 html('<p class="addr">2270 financial modeling &middot; nova sbe</p><hr>')
 html(f"""<table class="links"><tr>
