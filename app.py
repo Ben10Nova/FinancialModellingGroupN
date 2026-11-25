@@ -753,7 +753,9 @@ def investor():
     ss = st.session_state
     dep, tv = ss.get('inv_dep', DEMO_DEPOSIT), ss.get('inv_tv', DEFAULTS.target_vol)
     a, b = st.columns([4, 1], vertical_alignment='center')
-    view = a.segmented_control('view', ['account', 'settings'], default='account', key='inv_view', label_visibility='collapsed')
+    ss.setdefault('inv_view', 'account')                           # state, not default=: save_settings also sets it
+    view = a.segmented_control('view', ['account', 'settings'], key='inv_view', label_visibility='collapsed',
+                               on_change=lambda: ss.update(inv_view=ss['inv_view'] or 'account'))   # no empty selection
     if b.button('log out', key='inv_logout', type='tertiary'):
         ss['investor'] = False
         st.rerun()
