@@ -6,7 +6,7 @@ Lucas Strobel – Student number: 78177
 
 ## Backtest notebook
 
-`FM_GroupN_backtest.ipynb` reproduces every number in the prospectus. Open it in Google Colab and choose *Runtime → Run all*; data is pulled from the Yahoo Finance API.
+`vol-control+pair_v1.ipynb` reproduces every number in the prospectus. Open it in Google Colab and choose *Runtime → Run all*; data is pulled from the Yahoo Finance API.
 
 ## Run the Streamlit app locally
 
