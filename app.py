@@ -120,13 +120,13 @@ html(f"""<table class="links"><tr>
 
 # ---------------------------------------------------------------- thesis
 section('thesis', 'thesis')
-html("""<p>two return streams, built to be uncorrelated:</p>
+html("""<p>two return streams, built to be uncorrelated, sharing one 15% risk budget:</p>
 <p>1: volatility-targeted equity. we hold the s&amp;p 500 and scale exposure with realized volatility: more in calm
-markets, less in stressed ones.</p>
-<p>2: defensive sector spread. a market-neutral relative-value position between the two most defensive us equity
+markets, less in stressed ones. it gets whatever risk budget the spread sleeve does not use.</p>
+<p>2: defensive sector spread. a beta-neutral relative-value position between the two most defensive us equity
 sectors, which trades the mean reversion of temporary dislocations.</p>
 <p>the two sleeves earn their returns from different sources, so the combined portfolio has outperformed either one
-on its own.</p>""")
+on its own, with lower volatility and drawdowns than the s&amp;p 500.</p>""")
 
 # ---------------------------------------------------------------- assumptions
 section('assumptions', 'assumptions')
