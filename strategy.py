@@ -1,6 +1,7 @@
 """Strategy logic shared by the Streamlit app. Mirrors vol-control_pair_v1.ipynb line for line;
 test_strategy.py checks that the default numbers match the notebook."""
 from dataclasses import dataclass
+from itertools import groupby
 import numpy as np, pandas as pd, statsmodels.api as sm, yfinance as yf
 
 SECTORS = ['XLB', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLU', 'XLV', 'XLY']
@@ -54,9 +55,11 @@ def lowbeta_pick(px, year, years):
     return tuple(sorted(sector_betas(px, str(year - years), str(year - 1)).nsmallest(2).index))
 
 
-def zscore_position(px, a, b, win, z_in, z_out):
+def zscore_position(px, a, b, win, z_in, z_out, mask=None):
     s = np.log(px[a] / px[b])
     z = (s - s.rolling(win).mean()) / s.rolling(win).std()
+    if mask is not None:
+        z = z.where(mask)
     pos, p = [], 0
     for zt in z:
         if np.isnan(zt):                 p = 0
@@ -64,21 +67,21 @@ def zscore_position(px, a, b, win, z_in, z_out):
         elif p == 0 and zt < -z_in:      p = +1
         elif p != 0 and abs(zt) < z_out: p = 0
         pos.append(p)
-    return pd.Series(pos, index=z.index, dtype=float)
+    return pd.Series(pos, index=z.index, dtype=float), z
 
 
 def pair_targets(px, p):
     hold_year = px.index.year + (month_end_flag(px.index) & (px.index.month == 12))
     tgt = pd.DataFrame(0.0, index=px.index, columns=SECTORS)
-    chosen, cache = {}, {}
-    for y in range(int(p.start[:4]), hold_year.max() + 1):
-        a, b = chosen[y] = lowbeta_pick(px, y, p.beta_years)
-        if (a, b) not in cache:
-            cache[(a, b)] = zscore_position(px, a, b, p.z_win, p.z_in, p.z_out)
-        pos, m = cache[(a, b)], hold_year == y
+    z_active = pd.Series(np.nan, index=px.index)
+    chosen = {y: lowbeta_pick(px, y, p.beta_years) for y in range(int(p.start[:4]), hold_year.max() + 1)}
+    for (a, b), ys in groupby(chosen, key=chosen.get):         # consecutive years with the same pair
+        m = np.isin(hold_year, list(ys))
+        pos, z = zscore_position(px, a, b, p.z_win, p.z_in, p.z_out, mask=m)   # a new pair starts flat
         tgt.loc[m, a] += pos.values[m]
         tgt.loc[m, b] -= pos.values[m]
-    return tgt, chosen
+        z_active[m] = z.values[m]
+    return tgt, chosen, z_active
 
 
 def backtest(px, p, use_spy=True, pair_size=None):
