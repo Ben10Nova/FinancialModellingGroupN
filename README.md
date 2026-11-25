@@ -17,9 +17,6 @@ python3 -m pip install -r requirements.txt
 python3 -m streamlit run app.py
 ```
 
-`strategy.py` holds the strategy logic (same as the notebook). `python3 test_strategy.py` checks that the
-app reproduces the notebook's numbers and has no look-ahead.
-
 ## Deploy on Streamlit Community Cloud
 
 In Streamlit Community Cloud, select `Ben10Nova/FinancialModellingGroupN`,
