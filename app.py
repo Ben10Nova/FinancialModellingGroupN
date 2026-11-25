@@ -9,7 +9,7 @@ import streamlit as st
 from strategy import Params, load_prices, run, wealth
 
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
-COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/FM_GroupN_backtest.ipynb'
+COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
 DEFAULTS = Params()
 
 st.set_page_config(page_title='Group N Capital - Official Home Page', layout='centered')
