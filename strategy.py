@@ -1,4 +1,4 @@
-"""Strategy logic shared by the Streamlit app. Mirrors FM_GroupN_backtest.ipynb line for line;
+"""Strategy logic shared by the Streamlit app. Mirrors vol-control_pair_v1.ipynb line for line;
 test_strategy.py checks that the default numbers match the notebook."""
 from dataclasses import dataclass
 import numpy as np, pandas as pd, statsmodels.api as sm, yfinance as yf
