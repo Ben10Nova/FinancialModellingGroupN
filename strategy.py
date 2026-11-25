@@ -37,6 +37,13 @@ def load_prices(start=DATA_START, end=DATA_END):
     return px.dropna()
 
 
+def load_live(start='2024-01-01'):
+    # prices up to today; dropna also drops today's row if an index has not printed yet
+    raw = yf.download(TICKERS, start=start, auto_adjust=True, progress=False)['Close'][TICKERS]
+    raw['^IRX'] = raw['^IRX'].ffill()
+    return raw.dropna()
+
+
 def month_end_flag(idx):
     return ~idx.to_period('M').duplicated(keep='last')          # last trading day of each month
 
