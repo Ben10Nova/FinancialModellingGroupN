@@ -11,4 +11,5 @@ python fetch_data.py   # caches prices to px.pkl (git-ignored)
 python run_all.py      # long-only / risk parity / sector / calendar strategies
 python daily.py        # pair trades, turn-of-month
 python combos.py       # core portfolios + XLU/XLP pair overlay
+python pair_select.py  # ex-ante pair-selection rules over all 36 sector pairs
 ```
