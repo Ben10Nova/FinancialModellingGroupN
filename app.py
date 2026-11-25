@@ -1,4 +1,5 @@
 from dataclasses import asdict
+import json
 from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
@@ -18,11 +19,27 @@ REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
 DEFAULTS = Params()
 DEMO_DEPOSIT, DEMO_START = 1000.0, '2026-01-01'
-CRISES = [('global financial crisis', '2007-10-09', '2009-03-09'), ('euro debt crisis', '2011-04-29', '2011-10-03'),
-          ('q4 2018 selloff', '2018-09-20', '2018-12-24'), ('covid crash', '2020-02-19', '2020-03-23'),
-          ('2022 rate shock', '2022-01-03', '2022-10-12')]          # s&p 500 peak and trough closes
-TEAM = [('lucas s', '[title]'), ('ben s', '[title]'), ('katha g', '[title]'), ('noah vr', '[title]'),
-        ('henrik t', '[title]'), ('chris w', '[title]')]
+CRISES = [  # s&p 500 peak and trough closes, what happened, what it shows
+    ('global financial crisis', '2007-10-09', '2009-03-09',
+     'the us housing bust turned into a banking crisis. lehman brothers failed in september 2008 and the s&amp;p 500 lost more than half its value.',
+     'the fall built up over many months, so the monthly reset had time to cut exposure before the worst of it.'),
+    ('euro debt crisis', '2011-04-29', '2011-10-03',
+     'markets feared that greece, italy and spain could not pay their debts, and the us lost its aaa rating in august.',
+     'markets were calm going in, so exposure was high when it hit. most of the drop came within a few weeks, faster than a monthly reset can react.'),
+    ('q4 2018 selloff', '2018-09-20', '2018-12-24',
+     'the fed kept raising rates while the trade war with china escalated. stocks fell almost 20% into christmas eve.',
+     'a calm summer meant exposure was close to the cap going in.'),
+    ('covid crash', '2020-02-19', '2020-03-23',
+     'the pandemic shut down economies and the s&amp;p 500 fell a third in about a month, the fastest crash on record.',
+     'the first leg down in late february hit at full exposure. the february month-end reset then cut it hard, which spared most of the march crash.'),
+    ('2022 rate shock', '2022-01-03', '2022-10-12',
+     'inflation hit a 40-year high and the fed raised rates faster than in decades. stocks and bonds fell together.',
+     'a slow grind lower, so exposure came down month by month as volatility picked up.')]
+UNSPLASH = 'https://images.unsplash.com/photo-{}?w=480&h=600&fit=crop&crop=faces&q=75'
+TEAM = [('lucas s', '[title]', '1507003211169-0a1dd7228f2d'), ('ben s', '[title]', '1500648767791-00dcc994a43e'),
+        ('katha g', '[title]', '1494790108377-be9c29b29330'), ('noah vr', '[title]', '1472099645785-5658abf4ff4e'),
+        ('henrik t', '[title]', '1519085360753-af0119f7cbe7'), ('chris w', '[title]', '1506794778202-cad84cf45f1d')]
+# stock photos from unsplash as placeholders: swap the id (or put a full image url) for the real photo
 BIO = '[short bio: background, role at mvp strategies and areas of focus. two to three sentences.]'
 LOADER = ('M0,134.8 5,134.4 10,137.7 15,132.2 20,128.2 25,128.8 30,127.6 35,126.4 41,127.5 46,129.3 51,131.2 56,130.3 61,129.5 66,129.5 71,124.2 76,123.9 81,124.0 86,120.1 91,123.6 96,119.8 101,115.4 106,112.6 111,114.6 116,115.9 122,113.9 127,110.9 132,110.7 137,109.9 142,107.3 147,104.5 152,103.1 157,98.8 162,100.2 167,97.1 172,94.1 177,90.5 182,89.7 187,87.2 192,84.7 197,84.4 203,85.2 208,84.5 213,83.0 218,83.1 223,77.8 228,72.6 233,68.5 238,67.4 243,63.9 248,67.8 253,63.8 258,67.2 263,65.0 268,62.8 273,66.0 278,64.7 284,60.9 289,48.8 294,48.8 299,48.5 304,51.0 309,46.0 314,44.0 319,42.5 324,42.8 329,44.4 334,42.5 339,42.7 344,39.2 349,36.9 354,31.3 359,33.5 365,27.2 370,27.0 375,21.6 380,18.8 385,14.9 390,14.7 395,12.6 400,10.0',                # all-time growth of $1, log scale, quarterly: portfolio
           'M0,135.2 5,134.1 10,134.9 15,131.7 20,129.9 25,128.5 30,129.0 35,126.4 41,130.8 46,130.4 51,133.7 56,144.0 61,150.0 66,147.5 71,142.4 76,140.3 81,138.7 86,134.6 91,137.3 96,134.3 101,130.8 106,128.4 111,130.3 116,131.3 122,129.2 127,126.5 132,126.8 137,125.7 142,123.1 147,120.4 152,118.0 157,116.2 162,115.4 167,113.1 172,111.9 177,109.9 182,110.2 187,108.3 192,107.7 197,108.0 203,110.5 208,107.8 213,105.6 218,106.2 223,103.3 228,101.3 233,99.7 238,97.9 243,94.0 248,96.4 253,93.8 258,95.1 263,95.0 268,91.4 273,90.7 278,89.8 284,87.2 289,91.1 294,86.3 299,86.2 304,81.0 309,76.2 314,74.1 319,72.1 324,72.7 329,76.1 334,75.9 339,78.3 344,76.1 349,75.1 354,71.1 359,74.5 365,68.7 370,67.0 375,63.2 380,61.8 385,59.4 390,62.5 395,57.3 400,54.2')                   # and s&p 500 tr
@@ -157,15 +174,6 @@ p.chart-head b { font-size: 12px !important; font-weight: 500; margin-right: aut
 p.chart-head span { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px !important; color: var(--muted) !important; }
 p.chart-head i { display: inline-block; width: 14px; height: 2px; }
 
-/* team: one member per row, photo and name left, bio right */
-.team-row { display: flex; flex-direction: column; }
-.team-row .card { display: grid; grid-template-columns: 170px 1fr; gap: 32px; padding: 28px 0; border-bottom: 1px solid var(--hairline); }
-.team-row .card:first-child { padding-top: 0; }
-div.ph { width: 100%; aspect-ratio: 4/5; margin: 0 0 12px; background: var(--panel); border: 1px solid var(--hairline);
-  display: grid; place-items: center; font-family: var(--mono) !important; font-size: 18px; letter-spacing: .08em; color: var(--muted) !important; }
-p.mname { font-family: var(--serif) !important; font-size: 24px !important; line-height: 1.2; margin: 0; }
-.team-row p.note { margin: 2px 0 0; }
-p.bio { font-size: 15px !important; margin: 0; align-self: start; }
 
 /* clickable lists, episodes and their deep-dive pop-up */
 [class*="st-key-dv_"] { gap: 0 !important; max-width: 72ch; counter-reset: it; margin-bottom: 16px; }
@@ -210,7 +218,6 @@ table.kpi span.v.neg { color: var(--negative) !important; }
 
 @media (max-width: 640px) {
   h1.bh { font-size: 46px !important; } p.long { font-size: 17px !important; } .stApp h3 { font-size: 28px !important; }
-  .team-row .card { grid-template-columns: 1fr; gap: 14px; } div.ph { width: 60%; }
   .st-key-stress [data-testid="stColumn"]:has(p.dim), .st-key-stress [data-testid="stColumn"]:has(p.wh) { display: none !important; }
   .stApp .st-key-stress button[kind="tertiary"] * { font-size: 12.5px !important; line-height: 1.35; }
   .st-key-stress p.c { font-size: 11.5px !important; } .st-key-stress p.th { font-size: 10px !important; }
@@ -298,18 +305,12 @@ def dive(title, body):
     st.dialog(title, width='medium')(body)()
 
 
-def placeholder(what):
-    note(f'[deep dive placeholder: {what}]')
-
-
 def clickable(key, rows):
     """numbered list, each item opens its deep dive. plain markdown labels: write '&', '>' not entities"""
     with st.container(key=f'dv_{key}'):
-        for i, (lead, text) in enumerate(rows):
+        for i, (lead, text, more) in enumerate(rows):
             if st.button(f'**{lead}** {text}', key=f'{key}{i}', type='tertiary'):
-                dive(lead.rstrip('.'), lambda: (html(f'<p class="lede">{text}</p>'),
-                                                placeholder('the reasoning behind this point, evidence from the backtest '
-                                                            'and supporting charts.')))
+                dive(lead.rstrip('.'), lambda: html(''.join(f'<p>{t}</p>' for t in more())))
 
 
 @st.cache_data(ttl=86400, show_spinner=False)
@@ -354,13 +355,49 @@ def home():
                 f'<p><a href="{COLAB}">notebook</a> &middot; <a href="{REPO}">source code</a></p>'))
 
 
+def sleeve_facts():
+    p, res = results()
+    sl = res['sleeves']
+    corr = monthly(res['spy_only'].net).corr(monthly(res['pair_only'].net))
+    sp_dd = res['table'].loc['Max drawdown (monthly)', 'S&P 500 TR']
+    return p, sl, corr, sp_dd
+
+
+def thesis_equity():
+    p, sl, _, sp_dd = sleeve_facts()
+    e = sl['Vol-managed SPY only']
+    return ['volatility comes in clusters. a wild week is usually followed by another wild week, a calm month by another '
+            'calm month. and markets tend to fall hardest when they are already nervous.',
+            f'so we don\'t hold a fixed amount of the s&amp;p 500. at each month-end we check how much spy moved over the last '
+            f'21 trading days and size the position so its risk lands on target. calm market: bigger position, up to '
+            f'{p.max_lev:.2f}x. nervous market: smaller position, the rest sits in t-bills.',
+            f'on its own this sleeve made <span class="fig">{num(e["Ann. avg return"])[0]}</span> a year with a worst drawdown '
+            f'of <span class="fig">{num(e["Max drawdown (monthly)"])[0]}</span>. the s&amp;p 500: '
+            f'<span class="fig">{num(sp_dd)[0]}</span>.',
+            'the catch: after a crash exposure is low, right when markets bounce back. so it misses part of the rebound.']
+
+
+def thesis_spread():
+    p, sl, corr, _ = sleeve_facts()
+    s = sl['Pair only (+ T-bills)']
+    return ['utilities, consumer staples and health care sell things people buy in good times and bad: power, food, '
+            'medicine. so these sectors react little to the market, and they tend to move together.',
+            f'sometimes one runs ahead of the other for a few weeks for no lasting reason. we measure the gap as a z-score: how '
+            f'far the price ratio is from its 60-day average, in standard deviations. past {p.z_in:g} we buy the one that fell '
+            f'behind and short the one that ran ahead. once the gap is back under {p.z_out:g}, we close both.',
+            f'one leg is long, one is short, so the direction of the market mostly cancels out. beta of this sleeve: '
+            f'<span class="fig">{num(s["Beta"], "x")[0]}</span>. return on its own: '
+            f'<span class="fig">{num(s["Ann. avg return"])[0]}</span> a year. '
+            f'correlation with the equity sleeve: <span class="fig">{num(corr, "x")[0]}</span>.']
+
+
 def thesis():
     heading('thesis')
     html('<p>two return streams, built to be uncorrelated, sharing one 15% risk budget:</p>')
     clickable('thesis', [('volatility-targeted equity.', 'we hold the s&p 500 and scale exposure with realized volatility: more in '
-            'calm markets, less in stressed ones. it gets whatever risk budget the spread sleeve does not use.'),
+            'calm markets, less in stressed ones. it gets whatever risk budget the spread sleeve does not use.', thesis_equity),
            ('defensive sector spread.', 'a beta-neutral relative-value position between the two most defensive us '
-            'equity sectors, which trades the mean reversion of temporary dislocations.')])
+            'equity sectors, which trades the mean reversion of temporary dislocations.', thesis_spread)])
     html('<p>the two sleeves earn their returns from different sources, so the combined portfolio has outperformed '
          'either one on its own, with lower volatility and drawdowns than the s&amp;p 500.</p>')
 
@@ -466,7 +503,7 @@ def stress_tests():
     with st.container(key='stress'):
         for col, t in zip(st.columns(W), ['episode', 'window'] + [n for n, _ in streams]):
             col.markdown(f'<p class="th {"l" if t == "episode" else "wh" if t == "window" else ""}">{t}</p>', unsafe_allow_html=True)
-        for k, (name, a, b) in enumerate(eps):
+        for k, (name, a, b, story, lesson) in enumerate(eps):
             c = st.columns(W, vertical_alignment='center')
             clicked = c[0].button(name, key=f'ep{k}', type='tertiary')
             c[0].markdown(f'<p class="win">{span(a, b)}</p>', unsafe_allow_html=True)
@@ -474,13 +511,17 @@ def stress_tests():
             for col, (n, r) in zip(c[2:], streams):
                 cell(col, (1 + cut(r, a, b)).prod() - 1, 'em' if n == 'portfolio' else '')
             if clicked:
-                def body(a=a, b=b):
+                def body(a=a, b=b, story=story, lesson=lesson):
                     note(span(a, b))
+                    w = bt.w_spy
+                    pos = (f' spread pair: {res["yearly"].loc[int(a[:4]), "Pair held"].lower()}, open on '
+                           f'{(res["pair_only"].gross_exposure.loc[a:b] > 0).mean():.0%} of days.' if p.pair_size > 0 else '')
+                    html(f'<p>{story}</p><p>{lesson} equity exposure going in: <span class="fig">{w.loc[:a].iloc[-1]:.2f}x</span>, '
+                         f'average during the episode: <span class="fig">{w.loc[a:b].mean():.2f}x</span>.{pos}</p>')
                     html('<table class="plain"><tr>' + ''.join(f'<th>{n}</th>' for n, _ in streams) + '</tr><tr>'
                          + ''.join(td((1 + cut(r, a, b)).prod() - 1) for _, r in streams) + '</tr></table>')
                     chart('growth of $1 over the episode', [('portfolio (net)', wealth(cut(bt.net, a, b)), S1),
                                                             ('s&amp;p 500 tr', wealth(cut(bench, a, b)), S2)], kind='line')
-                    placeholder('what happened in markets, how each sleeve was positioned going in, and what drove the result.')
                 dive(name, body)
 
 
@@ -516,20 +557,67 @@ def live_2026():
          f'<span class="fig">{"/".join(live["pair_now"]).lower()}</span>.</p>')
 
 
+def rule_budget():
+    p, _ = results()
+    left = max(p.target_vol ** 2 - 0.06 ** 2, 0) ** .5
+    return [f'think of {p.target_vol:.0%} volatility as the total risk we are allowed to take. the spread sleeve goes first: we '
+            'measure how much it moved over the last 63 trading days. the equity sleeve gets what is left.',
+            f'risks don\'t add up in a straight line, because the two sleeves don\'t move together. if the spread uses 6%, the '
+            f'equity sleeve still gets &radic;({p.target_vol * 100:g}&sup2; &minus; 6&sup2;) = <span class="fig">{left:.1%}</span>, '
+            f'not {p.target_vol - .06:.0%}.']
+
+
+def rule_equity():
+    p, _ = results()
+    return ['position = risk budget / how much spy moved lately (annualized).',
+            f'example: budget 13%, spy moving at 20% a year: hold 13 / 20 = 0.65x, the other 0.35 sits in t-bills. spy moving at '
+            f'8%: 1.6x, and the extra 0.6 is borrowed at the t-bill rate plus {p.fin_spread * 1e4:.0f} bp. never more than '
+            f'{p.max_lev:.2f}x.',
+            'we only reset at month-end. in between, the position just moves with the market.']
+
+
+def rule_spread():
+    p, _ = results()
+    return ['on the last trading day of the year we measure each of the 9 sector etfs against spy over that year and pick the '
+            'two that moved least with the market. that pair is traded all of next year.',
+            'the legs are sized so both carry the same market exposure: the one that moves less with the market gets the bigger weight.',
+            f'example with xlp and xlu: z hits +2.3, so xlp has run ahead of xlu. we short xlp and buy xlu. when z falls back '
+            f'under {p.z_out:g}, we close both.',
+            'when the pair changes at year-end, the old position is closed and the new pair starts flat.']
+
+
+def rule_execution():
+    return ['every decision uses closing prices up to today. we trade at today\'s close, so a new position earns from tomorrow. '
+            'no peeking at prices we could not have known.',
+            'we checked this by deleting all data after a date and rerunning. everything before that date came out exactly the '
+            'same. the test is in the notebook.']
+
+
+def rule_costs():
+    p, res = results()
+    bt = res['bt']
+    turn = bt.turnover.sum() / (len(bt) / 252)
+    return [f'every trade costs {p.cost * 1e4:.0f} bp of the amount traded: spread, commission, slippage. shorts cost '
+            f'{p.short_fee * 1e4:.0f} bp a year to borrow, borrowed cash costs the t-bill rate plus {p.fin_spread * 1e4:.0f} bp.',
+            'every return on this site is after these costs.',
+            f'we trade about <span class="fig">{turn:.0f}x</span> our capital a year, mostly the spread legs, so costs matter. '
+            'raise the cost slider on the performance page to see how much.']
+
+
 def rules():
     heading('rules')
     p, _ = results()
     clickable('rules', [('risk budget.', f'one {p.target_vol:.0%} volatility budget for the whole portfolio. the spread sleeve\'s realized '
-            'volatility (63 trading days) is taken out first; the equity sleeve gets the rest.'),
+            'volatility (63 trading days) is taken out first; the equity sleeve gets the rest.', rule_budget),
            ('equity sleeve.', f'at each month-end, exposure = remaining budget / spy realized volatility (21 trading days, '
             f'annualized), capped at {p.max_lev:.2f}x. idle cash earns the t-bill rate; leverage is financed at t-bill + '
-            f'{p.fin_spread * 1e4:.0f} bp.'),
+            f'{p.fin_spread * 1e4:.0f} bp.', rule_equity),
            ('spread sleeve.', f'at each year-end, select the two lowest-beta sector etfs vs spy (trailing 1y). daily z-score '
             f'of the log price ratio vs its 60-day mean: enter at |z| > {p.z_in:g} (long cheap, short rich), exit at '
             f'|z| < {p.z_out:g}. legs are sized beta-neutral from the same prior-year betas, {2 * p.pair_size:.2f}x gross. '
-            'a newly selected pair starts flat.'),
-           ('execution.', 'signals use closes up to day t; positions earn from t+1.'),
-           ('costs.', f'{p.cost * 1e4:.0f} bp per unit traded, {p.short_fee * 1e4:.0f} bp p.a. borrow fee on shorts.')])
+            'a newly selected pair starts flat.', rule_spread),
+           ('execution.', 'signals use closes up to day t; positions earn from t+1.', rule_execution),
+           ('costs.', f'{p.cost * 1e4:.0f} bp per unit traded, {p.short_fee * 1e4:.0f} bp p.a. borrow fee on shorts.', rule_costs)])
 
 
 def risks():
@@ -546,11 +634,72 @@ def risks():
 
 
 def team():
+    """wheel picker: spin the names, the one in the middle shows its photo and bio"""
     heading('team')
-    initials = lambda n: ''.join(w[0] for w in n.split())
-    html('<div class="team-row">' + ''.join(
-        f'<div class="card"><div><div class="ph">{initials(n)}</div><p class="mname">{n}</p><p class="note">{t}</p></div>'
-        f'<p class="bio">{BIO}</p></div>' for n, t in TEAM) + '</div>')
+    people = json.dumps([dict(n=n, t=t, b=BIO, i=''.join(w[0] for w in n.split()),
+                              u=ph if ph.startswith('http') else UNSPLASH.format(ph)) for n, t, ph in TEAM])
+    components.html("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
+* { box-sizing: border-box; margin: 0; }
+body { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #101924; background: #fff; }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 48px; align-items: center; }
+.picker { position: relative; height: 420px; }
+.wheel { height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; perspective: 900px;
+  -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+          mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
+.wheel::-webkit-scrollbar { display: none; }
+.pad { height: 178px; }
+.item { height: 64px; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; cursor: pointer;
+  font-family: "Newsreader", Georgia, serif; font-size: 30px; transform-origin: center; will-change: transform, opacity; user-select: none; }
+.band { position: absolute; left: 0; right: 0; top: 178px; height: 64px; pointer-events: none;
+  border-top: 1px solid #d7d7d7; border-bottom: 1px solid #d7d7d7; }
+.card { transition: opacity .25s; }
+.card.out { opacity: 0; }
+.ph { position: relative; overflow: hidden; width: 180px; aspect-ratio: 4/5; background: #f5f5f5; border: 1px solid #d7d7d7; display: grid; place-items: center;
+  font-family: "IBM Plex Mono", monospace; font-size: 18px; letter-spacing: .08em; color: #555b63; margin-bottom: 16px; }
+.ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
+.name { font-family: "Newsreader", Georgia, serif; font-size: 28px; line-height: 1.2; }
+.title { font-size: 12.5px; color: #555b63; margin: 2px 0 14px; }
+.bio { font-size: 15px; line-height: 1.6; max-width: 46ch; }
+@media (max-width: 600px) { .wrap { grid-template-columns: 1fr; gap: 28px; } .picker { height: 300px; } .pad { height: 118px; }
+  .band { top: 118px; } .item { font-size: 26px; } }
+</style>
+<div class="wrap">
+  <div class="picker"><div class="wheel" id="w"></div><div class="band"></div></div>
+  <div class="card" id="c"><div class="ph"><span id="ph"></span><img id="im" alt=""></div><p class="name" id="nm"></p><p class="title" id="tt"></p><p class="bio" id="bo"></p></div>
+</div>
+<script>
+const P = PEOPLE, w = document.getElementById('w'), c = document.getElementById('c');
+w.innerHTML = '<div class="pad"></div>' + P.map((p, i) => `<div class="item" data-i="${i}">${p.n}</div>`).join('') + '<div class="pad"></div>';
+const items = [...w.querySelectorAll('.item')];
+let cur = -1;
+im.onerror = () => im.style.display = 'none';                      // no photo: the initials stay visible
+P.forEach(p => new Image().src = p.u);                              // preload, so spinning does not flash
+function show(i) {
+  if (i === cur) return; cur = i; c.classList.add('out');
+  setTimeout(() => { const p = P[i]; ph.textContent = p.i; im.style.display = ''; im.src = p.u; im.alt = p.n; nm.textContent = p.n; tt.textContent = p.t; bo.textContent = p.b;
+                     c.classList.remove('out'); }, cur === -1 ? 0 : 150);
+}
+function paint() {
+  const mid = w.scrollTop + w.clientHeight / 2;
+  let best = 0, bd = 1e9;
+  items.forEach((el, i) => {
+    const d = (el.offsetTop + el.offsetHeight / 2 - mid) / el.offsetHeight;
+    const a = Math.abs(d);
+    el.style.transform = `rotateX(${Math.max(-80, Math.min(80, -d * 22))}deg) scale(${Math.max(.6, 1 - a * .14)})`;
+    el.style.opacity = Math.max(.08, 1 - a * .42);
+    el.style.filter = `blur(${Math.min(a * 1.1, 3)}px)`;
+    if (Math.abs(d) < bd) { bd = Math.abs(d); best = i; }
+  });
+  show(best);
+}
+w.addEventListener('scroll', () => requestAnimationFrame(paint), { passive: true });
+items.forEach(el => el.addEventListener('click', () =>
+  w.scrollTo({ top: el.offsetTop + el.offsetHeight / 2 - w.clientHeight / 2, behavior: 'smooth' })));
+const fit = () => { frameElement.style.height = document.body.scrollHeight + 'px'; paint(); };
+addEventListener('resize', fit); fit();
+</script>""".replace('PEOPLE', people), height=440)
 
 
 def investor():
