@@ -1,6 +1,4 @@
-import base64
 from dataclasses import asdict
-from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -16,7 +14,8 @@ DEFAULTS = Params()
 CRISES = [('global financial crisis', '2007-10-09', '2009-03-09'), ('euro debt crisis', '2011-04-29', '2011-10-03'),
           ('q4 2018 selloff', '2018-09-20', '2018-12-24'), ('covid crash', '2020-02-19', '2020-03-23'),
           ('2022 rate shock', '2022-01-03', '2022-10-12')]          # s&p 500 peak and trough closes
-TEAM = [('lucas_strobel.jpg', 'lucas strobel', 'inclusion and diversity officer'), ('cio2.jpg', '[name]', 'co-cio')]   # photo file in assets/, name, role
+TEAM = [('lucas s', '[title]'), ('ben s', '[title]'), ('katha g', '[title]'), ('noah vr', '[title]'), ('henrik t', '[title]'),
+        ('chris w', '[title]')]
 
 st.set_page_config(page_title=FUND, layout='centered')
 st.markdown("""
@@ -41,7 +40,10 @@ table.links, table.links tr, table.links td { border: 0 !important; background: 
 table.links td { vertical-align: top; padding: 0 30px 0 0; }
 table.links ul { margin: 0; padding-left: 22px; }
 table.stress td { white-space: nowrap; }
-table.team, table.team tr { border: 0 !important; background: none !important; } table.team { margin: 6px auto; } table.team td { border: 0 !important; text-align: center; padding: 0 28px; vertical-align: top; }
+table.team, table.team tr { border: 0 !important; background: none !important; } table.team { width: 100%; table-layout: fixed; margin: 6px 0; }
+table.team td { border: 0 !important; text-align: center; padding: 0 4px; vertical-align: top; white-space: nowrap; }
+@media (max-width: 500px) { table.team td, table.team td * { font-size: 13px !important; } }
+div.ph { width: 100%; max-width: 90px; aspect-ratio: 1; margin: 0 auto 4px auto; background: #e0e0e0; border: 1px solid #000; }
 [data-baseweb="input"], [data-baseweb="select"] > div, input { border-radius: 0 !important; background: #fff !important; }
 [data-baseweb="input"] { border: 2px inset #c0c0c0 !important; }
 [data-testid="stNumberInputStepDown"], [data-testid="stNumberInputStepUp"] { border-radius: 0 !important; background: #e0e0e0 !important; }
@@ -253,13 +255,8 @@ selection rules did not add value.</p>
 <p>- yahoo finance data, fixed cost assumptions, no taxes.</p>""")
 
 # ---------------------------------------------------------------- team
-def photo(name):
-    f = Path(__file__).parent / 'assets' / name
-    return f'<img src="data:image/jpeg;base64,{base64.b64encode(f.read_bytes()).decode()}" width="140" alt=""><br>' if f.exists() else ''
-
-
 section('team', 'team')
-html('<table class="team"><tr>' + ''.join(f'<td>{photo(f)}{n}<br><i>{r}</i></td>' for f, n, r in TEAM) + '</tr></table><hr>')
+html('<table class="team"><tr>' + ''.join(f'<td><div class="ph"></div>{n}<br><i>{r}</i></td>' for n, r in TEAM) + '</tr></table><hr>')
 
 # ---------------------------------------------------------------- footer
 html(f"""<p class="fine">data: yahoo finance (split/dividend adjusted), ^SP500TR, ^IRX. statistics on monthly returns;
