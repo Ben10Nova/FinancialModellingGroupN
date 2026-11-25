@@ -38,7 +38,7 @@ def load_prices(start=DATA_START, end=DATA_END):
 
 
 def month_end_flag(idx):
-    return pd.Series(idx, index=idx).groupby(idx.to_period('M')).transform('max').values == idx.values
+    return ~idx.to_period('M').duplicated(keep='last')          # last trading day of each month
 
 
 def spy_exposure(px, p):
@@ -48,18 +48,19 @@ def spy_exposure(px, p):
 
 def sector_betas(px, lo, hi):
     r = px[ASSETS].pct_change().loc[lo:hi]
-    return r[SECTORS].apply(lambda s: s.cov(r['SPY'])) / r['SPY'].var()
+    return r.cov()['SPY'][SECTORS] / r['SPY'].var()             # beta = cov / var
 
 
 def lowbeta_pick(px, year, years):
     return tuple(sorted(sector_betas(px, str(year - years), str(year - 1)).nsmallest(2).index))
 
 
-def zscore_position(px, a, b, win, z_in, z_out, mask=None):
+def zscore(px, a, b, win):
     s = np.log(px[a] / px[b])
-    z = (s - s.rolling(win).mean()) / s.rolling(win).std()
-    if mask is not None:
-        z = z.where(mask)
+    return (s - s.rolling(win).mean()) / s.rolling(win).std()
+
+
+def positions(z, z_in, z_out):
     pos, p = [], 0
     for zt in z:
         if np.isnan(zt):                 p = 0
@@ -67,7 +68,7 @@ def zscore_position(px, a, b, win, z_in, z_out, mask=None):
         elif p == 0 and zt < -z_in:      p = +1
         elif p != 0 and abs(zt) < z_out: p = 0
         pos.append(p)
-    return pd.Series(pos, index=z.index, dtype=float), z
+    return np.array(pos, dtype=float)
 
 
 def pair_targets(px, p):
@@ -75,44 +76,35 @@ def pair_targets(px, p):
     tgt = pd.DataFrame(0.0, index=px.index, columns=SECTORS)
     z_active = pd.Series(np.nan, index=px.index)
     chosen = {y: lowbeta_pick(px, y, p.beta_years) for y in range(int(p.start[:4]), hold_year.max() + 1)}
-    for (a, b), ys in groupby(chosen, key=chosen.get):         # consecutive years with the same pair
+    for (a, b), ys in groupby(chosen, key=chosen.get):         # consecutive years with the same pair = one block
         m = np.isin(hold_year, list(ys))
-        pos, z = zscore_position(px, a, b, p.z_win, p.z_in, p.z_out, mask=m)   # a new pair starts flat
-        tgt.loc[m, a] += pos.values[m]
-        tgt.loc[m, b] -= pos.values[m]
-        z_active[m] = z.values[m]
+        z = zscore(px, a, b, p.z_win).where(m)                   # nan outside the block, so a new pair starts flat
+        pos = positions(z, p.z_in, p.z_out)
+        tgt.loc[m, a] += pos[m]
+        tgt.loc[m, b] -= pos[m]
+        z_active[m] = z[m]
     return tgt, chosen, z_active
 
 
 def backtest(px, p, use_spy=True, pair_size=None):
-    pair_size = p.pair_size if pair_size is None else pair_size
-    e = spy_exposure(px, p) if use_spy else pd.Series(0.0, index=px.index)
-    tp = pair_targets(px, p)[0]
-    me = month_end_flag(px.index)
+    e = spy_exposure(px, p) if use_spy else 0 * px['SPY']
+    P = pair_targets(px, p)[0] * (p.pair_size if pair_size is None else pair_size)
     rf_d = (px['^IRX'] / 100 / 252).shift(1)
 
-    i0 = px.index.searchsorted(pd.Timestamp(p.start)) - 1
-    keep = (np.arange(len(px)) >= i0) & (px.index <= pd.Timestamp(p.end))
-    idx = px.index[keep]
-    R = px[ASSETS].pct_change().loc[idx].values
-    rf, e, P, me = rf_d.loc[idx].values, e.loc[idx].values, tp.loc[idx].values * pair_size, me[keep]
+    idx = px.loc[:p.end].index[px.index.searchsorted(pd.Timestamp(p.start)) - 1:]   # from the last close before start
+    R, rf = px[ASSETS].pct_change().loc[idx].values, rf_d.loc[idx].values
+    e, P, me = e.loc[idx].values, P.loc[idx].values, month_end_flag(idx)
 
-    w, prev, rows = np.zeros(len(ASSETS)), np.zeros(len(SECTORS)), []
+    w, rows = np.zeros(len(ASSETS)), []                         # weights: spy + 9 sectors, rest is cash
     for i in range(len(idx)):
-        if i == 0:
-            gross, w_drift = 0.0, w.copy()
-        else:
-            cash = 1 - w.sum()
-            gross = w @ R[i] + cash * (rf[i] + (p.fin_spread / 252 if cash < 0 else 0)) \
-                    - np.abs(np.minimum(w, 0)).sum() * p.short_fee / 252
-            w_drift = w * (1 + R[i]) / (1 + gross)
-        tgt = w_drift.copy()
-        if i == 0 or me[i]:
-            tgt[0] = e[i]
-        if not np.array_equal(P[i], prev):
-            tgt[1:] = P[i]
-            prev = P[i]
-        turn = np.abs(tgt - w_drift).sum()
+        cash = 1 - w.sum()
+        gross = w @ R[i] + cash * (rf[i] + (p.fin_spread / 252 if cash < 0 else 0)) \
+                - np.abs(np.minimum(w, 0)).sum() * p.short_fee / 252
+        drift = w * (1 + R[i]) / (1 + gross)                    # positions drift with prices
+        tgt = drift.copy()
+        if i == 0 or me[i]: tgt[0] = e[i]                       # spy: reset at month-end
+        if i == 0 or (P[i] != P[i - 1]).any(): tgt[1:] = P[i]   # pair: trade only when the target changes
+        turn = np.abs(tgt - drift).sum()
         rows.append((gross, gross - turn * p.cost, turn, tgt[0], np.abs(tgt).sum()))
         w = tgt
     out = pd.DataFrame(rows, index=idx, columns=['gross', 'net', 'turnover', 'w_spy', 'gross_exposure'])
