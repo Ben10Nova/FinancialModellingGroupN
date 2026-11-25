@@ -34,7 +34,7 @@ plt.rcParams.update({
     'axes.spines.top': False, 'axes.spines.right': False, 'axes.spines.left': False, 'axes.spines.bottom': False,
     'axes.grid': True, 'axes.grid.axis': 'y', 'grid.color': HAIR, 'grid.linewidth': 0.8, 'axes.axisbelow': True,
     'xtick.color': MUTED, 'ytick.color': MUTED, 'xtick.major.size': 0, 'ytick.major.size': 0,
-    'lines.solid_joinstyle': 'round'})
+    'lines.solid_joinstyle': 'round', 'text.parse_math': False})   # '$' in labels is a dollar sign, never math
 
 st.set_page_config(page_title='MVP Strategies', layout='centered', initial_sidebar_state='collapsed')
 st.markdown("""
