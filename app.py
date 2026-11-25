@@ -157,17 +157,15 @@ p.chart-head b { font-size: 12px !important; font-weight: 500; margin-right: aut
 p.chart-head span { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px !important; color: var(--muted) !important; }
 p.chart-head i { display: inline-block; width: 14px; height: 2px; }
 
-/* team: horizontal scroll, the card in the middle is in focus, the others fade */
-.team-row { display: flex; gap: 28px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin;
-  padding: 6px calc(50% - 150px) 22px; }
-.team-row .card { flex: 0 0 300px; scroll-snap-align: center; }
-.stApp .team-row .card { animation: fade linear both !important; animation-timeline: view(inline) !important; }
-@keyframes fade { 0%, 32% { opacity: .4; } 50% { opacity: 1; } 68%, 100% { opacity: .4; } }
-div.ph { width: 100%; aspect-ratio: 4/5; margin: 0 0 14px; background: var(--panel); border: 1px solid var(--hairline);
+/* team: one member per row, photo and name left, bio right */
+.team-row { display: flex; flex-direction: column; }
+.team-row .card { display: grid; grid-template-columns: 170px 1fr; gap: 32px; padding: 28px 0; border-bottom: 1px solid var(--hairline); }
+.team-row .card:first-child { padding-top: 0; }
+div.ph { width: 100%; aspect-ratio: 4/5; margin: 0 0 12px; background: var(--panel); border: 1px solid var(--hairline);
   display: grid; place-items: center; font-family: var(--mono) !important; font-size: 18px; letter-spacing: .08em; color: var(--muted) !important; }
-p.mname { font-family: var(--serif) !important; font-size: 26px !important; line-height: 1.2; margin: 0; }
-.team-row p.note { margin: 2px 0 10px; }
-p.bio { font-size: 14px !important; margin: 0; }
+p.mname { font-family: var(--serif) !important; font-size: 24px !important; line-height: 1.2; margin: 0; }
+.team-row p.note { margin: 2px 0 0; }
+p.bio { font-size: 15px !important; margin: 0; align-self: start; }
 
 /* clickable lists, episodes and their deep-dive pop-up */
 [class*="st-key-dv_"] { gap: 0 !important; max-width: 72ch; counter-reset: it; margin-bottom: 16px; }
@@ -178,8 +176,11 @@ p.bio { font-size: 14px !important; margin: 0; }
   font-family: var(--mono); font-size: 12px; line-height: 24px; color: var(--muted); }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"] * { font-size: 15px !important; line-height: 1.6; text-decoration: none !important;
   text-align: left; white-space: normal; }
+.stApp [class*="st-key-dv_"] button[kind="tertiary"] strong, .stApp .st-key-stress button[kind="tertiary"] p {
+  text-decoration: underline !important; text-decoration-thickness: 1px !important; text-underline-offset: 3px; }
+.stApp [class*="st-key-dv_"] button[kind="tertiary"]:hover, .stApp .st-key-stress button[kind="tertiary"]:hover { background: var(--panel) !important; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"] p::after, .stApp .st-key-stress button[kind="tertiary"] p::after {
-  content: "↗"; margin-left: 6px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  content: "↗"; margin-left: 6px; font-family: var(--mono); font-size: 13px; color: var(--ink); display: inline-block; text-decoration: none; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"]:hover *, .stApp .st-key-stress button[kind="tertiary"]:hover * { color: var(--muted) !important; }
 .st-key-stress { gap: 0 !important; }
 .st-key-stress [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 14px !important; padding: 6px 0;
@@ -193,7 +194,7 @@ p.bio { font-size: 14px !important; margin: 0; }
 .st-key-stress p.c { font-family: var(--mono) !important; font-size: 12.5px !important; font-variant-numeric: tabular-nums; text-align: right; }
 .st-key-stress p.c.em { font-weight: 600; } .st-key-stress p.c.neg { color: var(--negative) !important; }
 .st-key-stress p.dim { font-size: 12.5px !important; color: var(--muted) !important; text-align: left; } .st-key-stress p.th.l { text-align: left; }
-.stApp .st-key-stress button[kind="tertiary"] * { font-size: 13.5px !important; text-decoration: none !important; text-align: left; }
+.stApp .st-key-stress button[kind="tertiary"] * { font-size: 13.5px !important; text-align: left; }
 .st-key-stress p.win { display: none; }
 [role="dialog"] { border-radius: 0 !important; }
 [role="dialog"] :not([data-testid="stMarkdown"]) > [data-testid="stMarkdownContainer"] p { font-family: var(--serif) !important; font-weight: 500 !important; font-size: 28px !important; }
@@ -209,7 +210,7 @@ table.kpi span.v.neg { color: var(--negative) !important; }
 
 @media (max-width: 640px) {
   h1.bh { font-size: 46px !important; } p.long { font-size: 17px !important; } .stApp h3 { font-size: 28px !important; }
-  .team-row { padding: 6px 14vw 22px; gap: 18px; } .team-row .card { flex-basis: 72vw; }
+  .team-row .card { grid-template-columns: 1fr; gap: 14px; } div.ph { width: 60%; }
   .st-key-stress [data-testid="stColumn"]:has(p.dim), .st-key-stress [data-testid="stColumn"]:has(p.wh) { display: none !important; }
   .stApp .st-key-stress button[kind="tertiary"] * { font-size: 12.5px !important; line-height: 1.35; }
   .st-key-stress p.c { font-size: 11.5px !important; } .st-key-stress p.th { font-size: 10px !important; }
@@ -338,12 +339,19 @@ def results():
 
 # ================================================================ pages
 def home():
-    html(f'<div class="home"><div class="mid"><h1 class="bh">{FUND}</h1><p class="long">{FUND_LONG}</p>'
-         f'<p class="addr">{ADDRESS}</p></div>'
-         f'<p class="fine">data: yahoo finance (split/dividend adjusted), ^SP500TR, ^IRX. statistics on monthly returns; '
-         f'means &times;12, volatility &times;&radic;12, beta not annualized. method: <a href="{COLAB}">notebook</a> &middot; '
-         f'<a href="{REPO}">source code</a>.</p>'
-         f'<p class="fine">hypothetical backtest, 2270 financial modeling, nova sbe. not investment advice.</p></div>')
+    html(f'<div class="home"><div class="mid"><h1 class="bh">{FUND}</h1><p class="long">{FUND_LONG}<br>Strategies</p>'
+         f'<p class="addr">{ADDRESS}</p></div></div>')
+    with st.container(key='foot', horizontal=True, horizontal_alignment='center', gap='medium'):
+        if st.button('imprint', type='tertiary'):
+            dive('imprint', lambda: html(
+                f'<p>{FUND} &middot; {FUND_LONG}<br>{ADDRESS}</p>'
+                '<p class="note">student project, 2270 financial modeling, nova sbe. hypothetical backtest, '
+                'not investment advice.</p>'))
+        if st.button('data & method', type='tertiary'):
+            dive('data & method', lambda: html(
+                '<p>data: yahoo finance (split/dividend adjusted), ^SP500TR, ^IRX.<br>statistics on monthly returns; '
+                'means &times;12, volatility &times;&radic;12, beta not annualized.</p>'
+                f'<p><a href="{COLAB}">notebook</a> &middot; <a href="{REPO}">source code</a></p>'))
 
 
 def thesis():
@@ -541,7 +549,7 @@ def team():
     heading('team')
     initials = lambda n: ''.join(w[0] for w in n.split())
     html('<div class="team-row">' + ''.join(
-        f'<div class="card"><div class="ph">{initials(n)}</div><p class="mname">{n}</p><p class="note">{t}</p>'
+        f'<div class="card"><div><div class="ph">{initials(n)}</div><p class="mname">{n}</p><p class="note">{t}</p></div>'
         f'<p class="bio">{BIO}</p></div>' for n, t in TEAM) + '</div>')
 
 
