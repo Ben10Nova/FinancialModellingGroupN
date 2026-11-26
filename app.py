@@ -38,10 +38,10 @@ CRISES = [  # s&p 500 peak and trough closes, what happened, what it shows
      'inflation hit a 40-year high and the fed raised rates faster than in decades. stocks and bonds fell together.',
      'a slow grind lower, so exposure came down month by month as volatility picked up.')]
 UNSPLASH = 'https://images.unsplash.com/photo-{}?w=480&h=600&fit=crop&crop=faces&q=75'
-TEAM = [('lucas s', '[title]', '1507003211169-0a1dd7228f2d'), ('ben s', '[title]', '1500648767791-00dcc994a43e'),
+TEAM = [('lucas s', '[title]', 'assets/lucas_strobel.jpg'), ('ben s', '[title]', '1500648767791-00dcc994a43e'),
         ('katha g', '[title]', '1494790108377-be9c29b29330'), ('noah vr', '[title]', '1472099645785-5658abf4ff4e'),
         ('henrik t', '[title]', '1519085360753-af0119f7cbe7'), ('chris w', '[title]', '1506794778202-cad84cf45f1d')]
-# stock photos from unsplash as placeholders: swap the id (or put a full image url) for the real photo
+# photo: a file in assets/, a full image url, or an unsplash id (stock placeholder until the real photo is in)
 BIO = '[short bio: background, role at mvp strategies and areas of focus. two to three sentences.]'
 LOADER = ('M0,134.8 5,134.4 10,137.7 15,132.2 20,128.2 25,128.8 30,127.6 35,126.4 41,127.5 46,129.3 51,131.2 56,130.3 61,129.5 66,129.5 71,124.2 76,123.9 81,124.0 86,120.1 91,123.6 96,119.8 101,115.4 106,112.6 111,114.6 116,115.9 122,113.9 127,110.9 132,110.7 137,109.9 142,107.3 147,104.5 152,103.1 157,98.8 162,100.2 167,97.1 172,94.1 177,90.5 182,89.7 187,87.2 192,84.7 197,84.4 203,85.2 208,84.5 213,83.0 218,83.1 223,77.8 228,72.6 233,68.5 238,67.4 243,63.9 248,67.8 253,63.8 258,67.2 263,65.0 268,62.8 273,66.0 278,64.7 284,60.9 289,48.8 294,48.8 299,48.5 304,51.0 309,46.0 314,44.0 319,42.5 324,42.8 329,44.4 334,42.5 339,42.7 344,39.2 349,36.9 354,31.3 359,33.5 365,27.2 370,27.0 375,21.6 380,18.8 385,14.9 390,14.7 395,12.6 400,10.0',                # all-time growth of $1, log scale, quarterly: portfolio
           'M0,135.2 5,134.1 10,134.9 15,131.7 20,129.9 25,128.5 30,129.0 35,126.4 41,130.8 46,130.4 51,133.7 56,144.0 61,150.0 66,147.5 71,142.4 76,140.3 81,138.7 86,134.6 91,137.3 96,134.3 101,130.8 106,128.4 111,130.3 116,131.3 122,129.2 127,126.5 132,126.8 137,125.7 142,123.1 147,120.4 152,118.0 157,116.2 162,115.4 167,113.1 172,111.9 177,109.9 182,110.2 187,108.3 192,107.7 197,108.0 203,110.5 208,107.8 213,105.6 218,106.2 223,103.3 228,101.3 233,99.7 238,97.9 243,94.0 248,96.4 253,93.8 258,95.1 263,95.0 268,91.4 273,90.7 278,89.8 284,87.2 289,91.1 294,86.3 299,86.2 304,81.0 309,76.2 314,74.1 319,72.1 324,72.7 329,76.1 334,75.9 339,78.3 344,76.1 349,75.1 354,71.1 359,74.5 365,68.7 370,67.0 375,63.2 380,61.8 385,59.4 390,62.5 395,57.3 400,54.2')                   # and s&p 500 tr
@@ -665,11 +665,17 @@ def risks():
            (None, 'yahoo finance data, fixed cost assumptions, no taxes.')], ordered=False)
 
 
+def photo(ph):
+    if ph.startswith('assets/'):                                   # local file, inlined: the team iframe cannot load app files
+        return f'data:image/jpeg;base64,{base64.b64encode((Path(__file__).parent / ph).read_bytes()).decode()}'
+    return ph if ph.startswith('http') else UNSPLASH.format(ph)
+
+
 def team():
     """wheel picker: spin the names, the one in the middle shows its photo and bio"""
     heading('team')
     people = json.dumps([dict(n=n, t=t, b=BIO, i=''.join(w[0] for w in n.split()),
-                              u=ph if ph.startswith('http') else UNSPLASH.format(ph)) for n, t, ph in TEAM])
+                              u=photo(ph)) for n, t, ph in TEAM])
     components.html("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
