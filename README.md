@@ -8,7 +8,7 @@ Noah van Raay – Student number: 81173
 
 ## Backtest notebook
 
-`vol-control_pair_v1.ipynb` reproduces every number in the prospectus. Open it in Google Colab and choose *Runtime → Run all*; data is pulled from the Yahoo Finance API.
+`vol-control_pair_v1.ipynb` reproduces the backtest and simulation figures for the strategy. Open it in Google Colab and choose *Runtime → Run all*; data is pulled from the Yahoo Finance API.
 
 ## Run the Streamlit app locally
 

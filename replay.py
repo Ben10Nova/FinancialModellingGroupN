@@ -7,92 +7,48 @@ import streamlit.components.v1 as components
 
 from strategy import wealth
 
-# one story per calendar year: title, what happened, what we did, result, crisis year (holds longer while playing).
-# the numbers in these texts were checked against the combined backtest at the notebook defaults (Params()),
-# so they are only shown when the page runs with those settings.
+# Market context for each year. Strategy figures come from the current backtest.
 STORIES = {
     2006: ('a calm start',
-           'quiet markets for most of the year, broken by an emerging-market selloff in may and june.',
-           'volatility sat well below our 15% target, so exposure ran 1.3–1.8x, fell below 1x in june–july and was back at 2x from august.',
-           "ahead for the year, all of it in the second half. the may–june selloff cost us 15%, twice the market's fall.", 0),
+           'quiet markets for most of the year, broken by an emerging-market selloff in may and june.', 0),
     2007: ('the first cracks',
-           'subprime funds froze in august and the "quant quake" hit hedge funds. the market peaked in october.',
-           'exposure fell from 1.8x in january to about 0.5x by summer, rose to 1x in the autumn and was near 0.5x in december.',
-           'ahead of the market. in the second half the spread (+5%) offset the equity loss.', 0),
+           'subprime funds froze in august and the "quant quake" hit hedge funds. the market peaked in october.', 0),
     2008: ('the financial crisis',
-           'lehman brothers failed in september and the s&p 500 lost 37% over the year.',
-           'exposure stayed between 0.4x and 0.7x, then went to zero at the end of september. the spread made 11%.',
-           'from the october 2007 peak to the march 2009 low we lost 15%, the market 55%.', 1),
+           'lehman brothers failed in september and the s&p 500 lost 37% over the year.', 1),
     2009: ('the rebound we missed',
-           'stocks bottomed on march 9 and rallied 65% from the low.',
-           'started from zero exposure and only added risk as volatility fell. the spread added 4%.',
-           'behind the market. the price of a smoother ride: we buy back slowly.', 0),
+           'stocks bottomed on march 9 and rallied 65% from the low.', 0),
     2010: ('flash crash',
-           "the dow briefly fell almost 1,000 points on may 6, days after greece's first bailout.",
-           'went into may at about 0.9x. the june reset cut to 0.44x, and exposure stayed below 1x until october.',
-           'a decent year, but behind the index. the may drop hit us as hard as the market (−15%).', 0),
+           "the dow briefly fell almost 1,000 points on may 6, days after greece's first bailout.", 0),
     2011: ('euro crisis',
-           'fears over greek, italian and spanish debt peaked, and the us lost its aaa rating in august.',
-           'exposure was about 0.9x going into august. the drop came within days, faster than a monthly reset. '
-           'afterwards exposure stayed near 0.4x.',
-           "slightly ahead. our drawdown was 17%, the market's 19%.", 1),
+           'fears over greek, italian and spanish debt peaked, and the us lost its aaa rating in august.', 1),
     2012: ('whatever it takes',
-           'in july ecb president draghi promised to do "whatever it takes" to save the euro, and fear left the market.',
-           'exposure a little above 1x. the spread was open on 61% of days, its busiest year, but lost 2%.',
-           'slightly ahead of the market, all of it from the equity sleeve.', 0),
+           'in july ecb president draghi promised to do "whatever it takes" to save the euro, and fear left the market.', 0),
     2013: ('the taper tantrum',
-           'bond yields jumped when the fed hinted at slowing its bond buying, but stocks gained 32%.',
-           'calm stretches let the model lever up toward 2x.',
-           'ahead for the year, but the taper scare cost us 12% (market −6%), because the spread fell with yields.', 0),
+           'bond yields jumped when the fed hinted at slowing its bond buying, but stocks gained 32%.', 0),
     2014: ('low volatility',
-           'a calm year, until oil prices slumped in the second half.',
-           'exposure averaged 1.36x. the end-october reset halved it for november, and it was back at 2x for december.',
-           'well ahead. the spread (+13%) added as much as the equity sleeve.', 0),
+           'a calm year, until oil prices slumped in the second half.', 0),
     2015: ('china shakes markets',
-           'china devalued the yuan on aug 11. a week later the s&p 500 fell 11% in six trading days.',
-           'we went into august at about 1x and took the drop, then cut to 0.4x. '
-           'spread volatility had kept us at zero in april and may.',
-           'the market was flat. the spread made 22% and carried the year; the equity sleeve lost 4%.', 0),
+           'china devalued the yuan on aug 11. a week later the s&p 500 fell 11% in six trading days.', 0),
     2016: ('brexit and the election',
-           'two shocks that faded fast: the brexit vote in june and the us election in november.',
-           'the january selloff cut exposure to 0.3–0.5x just as stocks rebounded. after brexit we cut to 0.7x for july.',
-           'matched the market, but with more volatility and a 10% drop around the brexit vote.', 0),
+           'two shocks that faded fast: the brexit vote in june and the us election in november.', 0),
     2017: ('the calmest year ever',
-           'record-low volatility. with dividends, the s&p 500 rose in every month.',
-           'exposure sat near the 2x cap all year and never fell below 1.28x.',
-           'almost twice the market return, but fully exposed if volatility returned.', 0),
+           'record-low volatility. with dividends, the s&p 500 rose in every month.', 0),
     2018: ('volmageddon',
-           'the vix more than doubled in one day in february. rate hikes and the trade war hit stocks in q4.',
-           'went into february at 0.44x and q4 at 2x, cutting each time at the next reset. the spread made 9% in q4.',
-           'a small loss against a bigger market loss.', 1),
+           'the vix more than doubled in one day in february. rate hikes and the trade war hit stocks in q4.', 1),
     2019: ('the fed pivots',
-           'the fed paused in january and cut rates three times from july. stocks gained 31%.',
-           'zero exposure in january and february, then back to 2x by april.',
-           'behind the index all year. the spread made 14%, the equity sleeve 9%.', 0),
+           'the fed paused in january and cut rates three times from july. stocks gained 31%.', 0),
     2020: ('covid',
-           'the s&p 500 fell a third in a month, the fastest crash on record.',
-           'the end-of-february reset took exposure to zero until july. the spread carried the rebound (+46% by june).',
-           'well ahead at 0.49x average exposure, but the spread swung hard: −22% in the week to march 23.', 1),
+           'the s&p 500 fell a third in a month, the fastest crash on record.', 1),
     2021: ('meme stocks',
-           'gamestop grabbed the headlines while the index climbed with few setbacks.',
-           'exposure dropped to 0.4x in february, then ran near 1.2x. costs (2%) and a flat spread added to the gap.',
-           'behind the market in a strong year.', 0),
+           'gamestop grabbed the headlines while the index climbed with few setbacks.', 0),
     2022: ('the rate shock',
-           'inflation hit a 40-year high and the fed hiked faster than in decades. stocks and bonds fell together.',
-           'exposure fell from 0.8x to about 0.4x by spring and stayed below 0.9x. the spread made 13%.',
-           'almost flat while the market lost 18%.', 1),
+           'inflation hit a 40-year high and the fed hiked faster than in decades. stocks and bonds fell together.', 1),
     2023: ('banks wobble, ai takes off',
-           'silicon valley bank failed in march, then the ai rally lifted the biggest tech stocks.',
-           'rebuilt exposure to about 1x as volatility faded. both sleeves contributed: equity +18%, spread +19%.',
-           'beat the market by 13 points.', 0),
+           'silicon valley bank failed in march, then the ai rally lifted the biggest tech stocks.', 0),
     2024: ('the ai boom',
-           'ai optimism kept stocks climbing. the yen carry trade unwound in august.',
-           'trimmed risk after the august spike and rebuilt it as calm returned. the spread gained 4% in the unwind.',
-           'ahead of the market.', 0),
+           'ai optimism kept stocks climbing. the yen carry trade unwound in august.', 0),
     2025: ('tariffs',
-           'tariffs announced on april 2 cut the s&p 500 12% in four days, 19% from its february peak.',
-           'exposure had been low since january and was 0.44x when the drop hit.',
-           'lost 5% from february to the april low, the market 19%. finished well ahead.', 1),
+           'tariffs announced on april 2 cut the s&p 500 12% in four days, 19% from its february peak.', 1),
 }
 
 
@@ -106,10 +62,10 @@ def replay(res, p, defaults):
     show = p == defaults
     years = []
     for y, r in res['yearly'].iterrows():
-        title, happened, did, result, crisis = STORIES.get(int(y), ('', '', '', '', 0)) if show else ('', '', '', '', 0)
+        title, happened, crisis = STORIES.get(int(y), ('', '', 0)) if show else ('', '', 0)
         years.append(dict(y=int(y), pf=round(float(r['Strategy']) * 100, 1), sp=round(float(r['S&P 500 TR']) * 100, 1),
                           ex=round(float(bt.w_spy.loc[str(y)].mean()), 2), t=html.escape(title), h=html.escape(happened),
-                          d=html.escape(did), r=html.escape(result), c=crisis))
+                          c=crisis))
     data = dict(m=[d.strftime('%Y-%m') for d in ws.index], s=[round(v, 4) for v in ws], b=[round(v, 4) for v in wb],
                 e=[round(v, 2) for v in expo], y=years, stories=show)
     components.html(PAGE.replace('__DATA__', json.dumps(data, separators=(',', ':'))), height=880)
@@ -191,7 +147,7 @@ const pct=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%';
 function story(k){const e=YS[k],s=$('story');s.style.opacity=0;setTimeout(()=>{
  $('sh').innerHTML=`${e.y}${e.t?` &nbsp;<span style="font-weight:400">${e.t}</span>`:''}`;
  $('sn').innerHTML=`portfolio <b style="font-weight:500;color:${S1}">${pct(e.pf)}</b> &nbsp; s&amp;p 500 ${pct(e.sp)} &nbsp; exposure ${e.ex.toFixed(2)}x`;
- $('body').innerHTML=e.h?`<div class="r"><span class="k">what happened</span><span>${e.h}</span></div><div class="r"><span class="k">what we did</span><span>${e.d}</span></div><div class="r" style="border-bottom:0"><span class="k">result</span><span style="font-weight:500">${e.r}</span></div>`:'';
+ $('body').innerHTML=e.h?`<div class="r" style="border-bottom:0"><span class="k">what happened</span><span>${e.h}</span></div>`:'';
  s.style.opacity=1;},180);}
 function toggle(){open=!open;$('body').classList.toggle('closed',!open);$('tgt').textContent=open?'hide story':'show story';$('tgi').innerHTML=open?'&#8963;':'&#8964;';$('tg').setAttribute('aria-expanded',open);setTimeout(fit,450);}
 function show(k,jump){sel=k;if(jump)cur=last(YS[k].y);render(cur);mark(k);story(k);}
