@@ -754,6 +754,34 @@ def rules():
            ('costs.', f'{p.cost * 1e4:.0f} bp per unit traded, {p.short_fee * 1e4:.0f} bp p.a. borrow fee on shorts.', rule_costs)])
 
 
+def fan_chart(fan):
+    """monte carlo fan: a few single paths, 5-95% and 25-75% bands and the median, s&p median and 5/95% for comparison"""
+    html(f'<p class="chart-head"><b>$1 over 10 years, 10,000 simulated paths (log scale)</b>'
+         f'<span><i style="background:{S1}"></i>portfolio (net)</span><span><i style="background:{S2}"></i>s&amp;p 500 tr</span></p>')
+    q = np.concatenate([np.ones((5, 1, 2)), fan['q']], axis=1)              # every path starts at $1
+    t = np.arange(q.shape[1]) / 12
+    fig, ax = plt.subplots(figsize=(8, 3.4))
+    for path in fan['paths']:
+        ax.plot(t, np.r_[1, path], color=S1, lw=.5, alpha=.12)
+    ax.fill_between(t, q[0, :, 0], q[4, :, 0], color=S1, alpha=.10, lw=0)
+    ax.fill_between(t, q[1, :, 0], q[3, :, 0], color=S1, alpha=.18, lw=0)
+    ax.plot(t, q[2, :, 0], color=S1, lw=2)
+    ax.plot(t, q[2, :, 1], color=S2, lw=1.5)
+    for k in (0, 4):
+        ax.plot(t, q[k, :, 1], color=S2, lw=1, ls='--')
+    for k, lab in ((0, '5%'), (2, 'median'), (4, '95%')):
+        ax.annotate(f'{lab} ${q[k, -1, 0]:.2f}', (t[-1], q[k, -1, 0]), xytext=(6, 0), textcoords='offset points',
+                    va='center', fontsize=7.5, color=S1)
+    ax.set_yscale('log'); ax.yaxis.set_minor_locator(NullLocator())
+    ax.set_yticks([t_ for t_ in [0.5, 1, 2, 5, 10, 20] if q.min() / 1.3 <= t_ <= q.max() * 1.3])
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'${v:g}'))
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f'{v:.0f}y'))
+    ax.axhline(1, color=INK, lw=.8); ax.set_xlim(0, t[-1] * 1.13)
+    show(fig)
+    note('shaded: the middle 50% and 90% of the portfolio&rsquo;s paths, thin lines: single paths, bold: median. '
+         'grey: s&amp;p 500 median, dashed: its 5% and 95% levels.')
+
+
 def risks():
     heading('risks')
     p, res = results()
@@ -765,7 +793,7 @@ def risks():
            (None, 'monthly rebalancing lags sudden volatility spikes; low exposure after crashes misses sharp rebounds.'),
            (None, 'realized daily volatility can exceed the budget in sudden spikes, because exposure is reset monthly.'),
            (None, 'yahoo finance data, fixed cost assumptions, no taxes.')], ordered=False)
-    mc, head = res['mc']
+    mc, head, fan = res['mc']
     html('<h4>10-year outlook</h4>')
     note('monte carlo: 10,000 paths of 10 years, built from random 12-month blocks of the backtest (portfolio, s&amp;p and '
          't-bills from the same months). it resamples our own history, so it inherits its optimism: a range of outcomes '
@@ -776,6 +804,7 @@ def risks():
                    for i, r in mc.iterrows())
     html(f'<table class="plain"><tr><th></th><th>portfolio (net)</th><th>s&amp;p 500 tr</th></tr>{rows}</table>')
     note(f'the portfolio ends ahead of the s&amp;p 500 in {head["beats_sp"]:.0%} of paths.')
+    fan_chart(fan)
 
 
 def photo(ph):

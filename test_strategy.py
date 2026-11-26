@@ -15,7 +15,7 @@ risk = {'Excess kurtosis': 2.3559, 'VaR 95%, historical': 0.0568, 'VaR 99%, Corn
         'Downside capture': 0.6113, 'Alpha t-stat, Newey-West': 3.0953}
 for k, v in risk.items():
     assert abs(res['risk'].loc[k, 'Strategy (net)'] - v) < 1e-3, f'{k}: app {res["risk"].loc[k, "Strategy (net)"]:.4f} vs notebook {v:.4f}'
-mc, head = res['mc']                                                                              # notebook: monte carlo
+mc, head, _ = res['mc']                                                                              # notebook: monte carlo
 assert abs(mc.loc['Wealth of $1: median', 'Strategy (net)'] - 5.1298) < 1e-3 and abs(head['beats_sp'] - 0.9316) < 1e-3
 
 for cut in ['2010-06-30', '2015-12-31', '2020-03-31']:     # no look-ahead: deleting the future changes nothing
