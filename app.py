@@ -47,23 +47,17 @@ CRISES = [  # S&P 500 peak and trough closes, what happened, what it shows
 # photo: a file in assets/ or a full image url
 # bio: education, internships, focus within the fund. rendered as html (innerHTML), not plain text
 BIO_LUCAS = ('<p>BSc in International Business from Maastricht University, now completing an MSc in Finance at Nova SBE.</p>'
-             '<p>Internships at KPMG, PradoNeo and Montag &amp; Montag.</p>'
-             '<p>Worked on the defensive sector spread: how the pair is chosen and when it is traded.</p>')
+             '<p>Internships at KPMG, PradoNeo and Montag &amp; Montag.</p>')
 BIO_BEN = ('<p>BSc from Maastricht University, now completing an MSc in Finance at Nova SBE.</p>'
-           '<p>Internships at Simon-Kucher, DZ Bank and H.C.F. Hanse Corporate Finance.</p>'
-           '<p>Built the execution and cost model: trading costs, financing of leverage and the borrow fee on shorts.</p>')
+           '<p>Internships at Simon-Kucher, DZ Bank and H.C.F. Hanse Corporate Finance.</p>')
 BIO_KATHA = ('<p>BBA from WHU &ndash; Otto Beisheim School of Management, now completing an MSc in Finance at Nova SBE.</p>'
-             '<p>Internships at BlackFin Capital Partners, Roland Berger and PwC.</p>'
-             '<p>Worked on the volatility-targeted equity sleeve and how its exposure follows realised volatility.</p>')
+             '<p>Internships at BlackFin Capital Partners, Roland Berger and PwC.</p>')
 BIO_NOAH = ('<p>BSc from the University of Münster, now completing an MSc in Finance at Nova SBE.</p>'
-            '<p>Internships at Triton Partners, UBS and BNP Paribas CIB.</p>'
-            '<p>Led the risk work: the shared volatility budget, drawdowns, stress tests and the Monte Carlo simulation.</p>')
+            '<p>Internships at Triton Partners, UBS and BNP Paribas CIB.</p>')
 BIO_HENRIK = ('<p>BSc in International Business from Maastricht University, now completing an MSc in Finance at Nova SBE.</p>'
-              '<p>Internships at Liberta Partners, REIA Capital and Deloitte.</p>'
-              '<p>Put the two sleeves together into one portfolio and wrote up the investment case.</p>')
+              '<p>Internships at Liberta Partners, REIA Capital and Deloitte.</p>')
 BIO_CHRIS = ('<p>BBA in International Finance from the University of Augsburg, now completing an MSc in Finance at Nova SBE.</p>'
-             '<p>Internships at EY and Salesfive.</p>'
-             '<p>Built the performance tables and the return attribution between the two sleeves.</p>')
+             '<p>Internships at EY and Salesfive.</p>')
 TEAM = [  # name, title, photo, bio (html), linkedin url ('' hides the icon)
     ('Lucas S.', 'Sector spread', 'assets/lucas_strobel.jpg', BIO_LUCAS, ''),
     ('Ben S.', 'Execution and costs', 'assets/ben_s.jpg', BIO_BEN, ''),
