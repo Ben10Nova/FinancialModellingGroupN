@@ -196,8 +196,8 @@ function story(k){const e=YS[k],s=$('story');s.style.opacity=0;setTimeout(()=>{
 function toggle(){open=!open;$('body').classList.toggle('closed',!open);$('tgt').textContent=open?'hide story':'show story';$('tgi').innerHTML=open?'&#8963;':'&#8964;';$('tg').setAttribute('aria-expanded',open);setTimeout(fit,450);}
 function show(k,jump){sel=k;if(jump)cur=last(YS[k].y);render(cur);mark(k);story(k);}
 function playYear(){if(!on)return;const k=sel,end=last(YS[k].y);
- (function draw(){if(!on)return;if(cur<end){cur++;render(cur);tm=setTimeout(draw,240);return;}
-  const wait=D.stories&&open?(YS[k].c?11000:8000):1500;
+ (function draw(){if(!on)return;if(cur<end){cur++;render(cur);tm=setTimeout(draw,180);return;}
+  const wait=D.stories&&open?(YS[k].c?6000:4200):1100;
   hd=setTimeout(()=>{if(!on)return;if(k>=YS.length-1){stop();return;}sel=k+1;mark(sel);story(sel);render(cur);setTimeout(playYear,300);},wait);})();}
 function play(){if(on){stop();return;}on=true;$('pl').textContent='pause';
  if(cur>=N-1){cur=st0-1;sel=kOf(yr);}else sel=kOf(yOf(Math.min(cur+1,N-1)));
