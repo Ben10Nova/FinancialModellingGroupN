@@ -70,7 +70,7 @@ const W=680,H=220,R=70,n=S.length-1;let lo=1,hi=1;S.concat(B).forEach(v=>{lo=Mat
 const l0=Math.log(lo/1.15),l1=Math.log(hi*1.15),x=i=>i/n*(W-R),y=v=>H-8-(Math.log(v)-l0)/(l1-l0)*(H-24);
 const d=a=>a.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)).join('');
 $('wm').innerHTML=`<line x1="0" x2="${W-R}" y1="${y(1)}" y2="${y(1)}" stroke="#ececea"/><path id="pb" d="${d(B)}" stroke="#848a90" stroke-width="1.4" opacity=".5" pathLength="1"/><path id="ps" d="${d(S)}" stroke="#0b2648" stroke-width="2" opacity=".6" pathLength="1"/>
-<g id="ends" style="opacity:0;transition:opacity .6s"><circle cx="${x(n)}" cy="${y(S[n])}" r="3.5" fill="#0b2648"/><text x="${x(n)+8}" y="${y(S[n])+4}" font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#0b2648">$${S[n].toFixed(2)}</text><circle cx="${x(n)}" cy="${y(B[n])}" r="3" fill="#848a90"/><text x="${x(n)+8}" y="${y(B[n])+4}" font-family="IBM Plex Mono" font-size="12" fill="#848a90">$${B[n].toFixed(2)}</text><text x="4" y="${y(1)-6}" font-family="IBM Plex Mono" font-size="10.5" fill="#9aa0a6">$1 in ${D.y0}</text></g>`;
+<g id="ends" style="opacity:0;transition:opacity .6s"><circle cx="${x(n)}" cy="${y(S[n])}" r="3.5" fill="#0b2648"/><text x="${x(n)+8}" y="${y(S[n])+4}" font-family="IBM Plex Mono" font-size="12" font-weight="500" fill="#0b2648">$${S[n].toFixed(2)}</text><circle cx="${x(n)}" cy="${y(B[n])}" r="3" fill="#848a90"/><text x="${x(n)+8}" y="${y(B[n])+4}" font-family="IBM Plex Mono" font-size="12" fill="#848a90">$${B[n].toFixed(2)}</text><text x="4" y="${y(1)+16}" font-family="IBM Plex Mono" font-size="10.5" fill="#9aa0a6">$1 in ${D.y0}</text></g>`;
 function count(el){const v=+el.dataset.v,f=+el.dataset.f,s=el.dataset.s,t0=performance.now(),dur=1400;
  (function tick(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=sg((v*e).toFixed(f))+s;if(p<1)requestAnimationFrame(tick);else el.textContent=sg(v.toFixed(f))+s;})(t0);}
 function intro(){const els=[...document.querySelectorAll('.fade')];
@@ -82,7 +82,7 @@ function intro(){const els=[...document.querySelectorAll('.fade')];
 document.querySelectorAll('[data-go]').forEach(btn=>btn.onclick=()=>{const p=btn.dataset.go;
  try{const a=parent.document.querySelector(`[data-testid="stSidebarNav"] a[href$="/${p}"]`);if(a){a.click();return;}}catch(e){}
  try{parent.location.href=p;}catch(e){window.open(p,'_top');}});
-const fit=()=>{try{frameElement.style.height=Math.ceil($('lp').getBoundingClientRect().height)+4+'px';}catch(e){}};
+const fit=()=>{try{const h=Math.ceil($('lp').getBoundingClientRect().height)+4+'px';frameElement.style.height=h;const box=frameElement.parentElement;if(box){box.style.height=h;box.style.minHeight=h;box.style.flex="0 0 "+h;}}catch(e){}};  // the streamlit wrapper keeps the height passed from python, so resize it too
 new ResizeObserver(fit).observe($('lp'));fit();
 const t0=Date.now();(function ready(){let busy=false;try{busy=parent.document.querySelector('.stApp')?.dataset.testScriptState==='running';}catch(e){}
  if((busy||Date.now()-t0<1500)&&Date.now()-t0<6000)return setTimeout(ready,100);intro();})();

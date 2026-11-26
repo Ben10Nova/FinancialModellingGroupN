@@ -210,7 +210,7 @@ ys.oninput=e=>{yr=+e.target.value;$('yv').textContent=yr;stop();init();cur=N-1;s
 if(!D.stories){$('tgbox').style.display='none';$('foot').textContent='full calendar-year returns, net of trading, financing and borrow costs. the year stories describe the notebook defaults: reset to see them.';}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();play();}
  if(e.key==='ArrowRight'){stop();show(Math.min(YS.length-1,sel+1),true);}if(e.key==='ArrowLeft'){stop();show(Math.max(kOf(yr),sel-1),true);}});
-const fit=()=>{try{frameElement.style.height=Math.ceil($('app').getBoundingClientRect().height)+4+'px';}catch(err){}};
+const fit=()=>{try{const h=Math.ceil($('app').getBoundingClientRect().height)+4+'px';frameElement.style.height=h;const box=frameElement.parentElement;if(box){box.style.height=h;box.style.minHeight=h;box.style.flex="0 0 "+h;}}catch(e){}};  // the streamlit wrapper keeps the height passed from python, so resize it too
 new ResizeObserver(fit).observe($('app'));$('body').addEventListener('transitionend',fit);
 init();sel=Math.max(0,kOf(2008));if(sel<0)sel=0;render(cur);mark(sel);story(sel);fit();
 </script>"""
