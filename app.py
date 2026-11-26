@@ -581,8 +581,8 @@ def live_2026():
     lb, lbench = live['bt'], live['bench_d']
     note(f'1 jan 2026 &rarr; {lb.index[-1]:%d %b %Y}'.lower())
     row = lambda name, r, cls: (f'<tr class="{cls}"><td class="label">{name}</td>{td((1 + r).prod() - 1)}'
-                                f'{td(r.std() * 252 ** .5)}{td((wealth(r) / wealth(r).cummax() - 1).min())}</tr>')
-    html('<table class="plain"><tr><th></th><th>return</th><th>volatility (ann.)</th><th>max drawdown</th></tr>'
+                                f'{td(monthly(r).std() * 12 ** .5)}{td((wealth(r) / wealth(r).cummax() - 1).min())}</tr>')
+    html('<table class="plain"><tr><th></th><th>return</th><th>volatility (ann., monthly)</th><th>max drawdown</th></tr>'
          + row('portfolio (net)', lb.net, 'em') + row('s&amp;p 500 tr', lbench, '') + '</table>')
     chart('growth of $1', [('portfolio (net)', wealth(lb.net), S1), ('s&amp;p 500 tr', wealth(lbench), S2)], kind='line')
     html(f'<p>current positioning: equity exposure <span class="fig">{lb.w_spy.iloc[-1]:.2f}x</span>, spread pair '
