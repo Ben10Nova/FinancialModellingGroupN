@@ -22,6 +22,8 @@ from landing import landing
 FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
 ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
+RESPONSIBLE = ('Noah van Raay', 'Rua Joaquim António de Aguiar 71', '[postal code] Lisboa, Portugal')   # imprint
+CONTACT = '[email]'                                                                                     # imprint: required
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
 DEFAULTS = Params()
 CODE = hashlib.md5((Path(__file__).parent / 'strategy.py').read_bytes()).hexdigest()   # cache key: new code = new results
@@ -442,9 +444,17 @@ def home():
     with st.container(key='foot', horizontal=True, horizontal_alignment='center', gap='medium'):
         if st.button('imprint', type='tertiary'):
             dive('imprint', lambda: html(
-                f'<p>{FUND} &middot; {FUND_LONG}<br>{ADDRESS}</p>'
-                '<p class="note">student project, 2270 financial modeling, nova sbe. hypothetical backtest, '
-                'not investment advice.</p>'))
+                f'<p>{FUND} is a student project for the course 2270 financial modeling at nova sbe. it is not a company '
+                'or a registered investment firm and offers no financial services.</p>'
+                f'<p>responsible for this website:<br>{"<br>".join(RESPONSIBLE)}<br>email: {CONTACT}</p>'
+                '<p>all figures are hypothetical backtests on historical data. nothing on this site is investment advice or '
+                'an offer to buy or sell any security. past performance does not predict future results.</p>'
+                '<p>we check our content carefully but give no guarantee that it is complete, correct or up to date. we are '
+                'not responsible for the content of external sites we link to.</p>'
+                '<p>privacy: we don\'t set cookies or collect personal data ourselves. the investor login is a demo and stores '
+                'nothing you type. the site runs on streamlit community cloud, and fonts and photos load from google fonts '
+                'and unsplash, which receive your ip address when you visit.</p>'
+                '<p>market data: yahoo finance. photos: unsplash.</p>'))
         if st.button('data & method', type='tertiary'):
             dive('data & method', lambda: html(
                 '<p>data: yahoo finance (split/dividend adjusted), ^SP500TR, ^IRX.<br>statistics on monthly returns; '
