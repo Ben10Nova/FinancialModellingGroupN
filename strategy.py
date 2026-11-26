@@ -70,18 +70,6 @@ def month_end_flag(idx):
     return me
 
 
-def spy_exposure(px, p, pair_ret=None):
-    # one risk budget: the spread sleeve's realised vol is taken out first, the equity sleeve gets the rest
-    vol = px['SPY'].pct_change().rolling(p.vol_days).std() * np.sqrt(252)
-    budget = p.target_vol if pair_ret is None else \
-             np.sqrt((p.target_vol ** 2 - (pair_ret.rolling(p.pair_vol_days).std() * np.sqrt(252)) ** 2).clip(lower=0))
-    return (budget / vol).clip(upper=p.max_lev)
-
-
-def pair_returns(px, P):
-    return (P.shift(1) * px[SECTORS].pct_change()).sum(axis=1)  # positions set at t-1 earn day t
-
-
 def sector_betas(px, lo, hi):
     r = px[ASSETS].pct_change().loc[lo:hi]
     return r.cov()['SPY'][SECTORS] / r['SPY'].var()             # beta = cov / var
@@ -128,29 +116,62 @@ def pair_targets(px, p):
 
 
 def backtest(px, p, use_spy=True, pair_size=None):
-    P = pair_targets(px, p)[0] * (p.pair_size if pair_size is None else pair_size)
-    e = spy_exposure(px, p, pair_returns(px, P)) if use_spy else 0 * px['SPY']
-    rf_d = (px['^IRX'] / 100 / 252).shift(1)
+    targets = pair_targets(px, p)[0] * (p.pair_size if pair_size is None else pair_size)
+    return simulate(px, p, targets, use_spy)
 
-    idx = px.loc[:p.end].index[px.index.searchsorted(pd.Timestamp(p.start)) - 1:]   # from the last close before start
-    R, rf = px[ASSETS].pct_change().loc[idx].values, rf_d.loc[idx].values
-    e, P, me = e.loc[idx].values, P.loc[idx].values, month_end_flag(idx)
 
-    w, rows = np.zeros(len(ASSETS)), []                         # weights: spy + 9 sectors, rest is cash
-    for i in range(len(idx)):
-        cash = 1 - w.sum()
-        gross = w @ R[i] + cash * (rf[i] + (p.fin_spread / 252 if cash < 0 else 0)) \
-                - np.abs(np.minimum(w, 0)).sum() * p.short_fee / 252
-        drift = w * (1 + R[i]) / (1 + gross)                    # positions drift with prices
-        tgt = drift.copy()
-        if i == 0 or me[i]: tgt[0] = e[i]                       # spy: reset at month-end
-        if i == 0 or (P[i] != P[i - 1]).any(): tgt[1:] = P[i]   # pair: trade only when the target changes
-        turn = np.abs(tgt - drift).sum()
-        rows.append((gross, gross - turn * p.cost, turn, tgt[0], np.abs(tgt).sum(), *tgt))
-        w = tgt
-    out = pd.DataFrame(rows, index=idx, columns=['gross', 'net', 'turnover', 'w_spy', 'gross_exposure']
-                       + [f'w_{a}' for a in ASSETS])                    # target weights after each close
-    return out.iloc[1:]
+def simulate(px, p, targets, use_spy=True, lag=1, vol_budget=True):
+    delay = lag - 1
+    start = px.index.searchsorted(pd.Timestamp(p.start))
+    if start < 2:
+        raise ValueError('Backtest requires prices before the opening trade.')
+    idx = px.index[start - 1:px.index.searchsorted(pd.Timestamp(p.end), side='right')]
+    if len(idx) < 2:
+        raise ValueError('Backtest requires at least one trading day in the evaluation window.')
+
+    returns = px[ASSETS].pct_change()
+    spy_vol = (returns['SPY'].rolling(p.vol_days).std() * np.sqrt(252)).shift(delay).loc[idx].to_numpy()
+    month_ends = pd.Series(month_end_flag(px.index), index=px.index)
+    rebalance = month_ends.shift(delay, fill_value=False).loc[idx].to_numpy()
+    targets = targets.shift(delay, fill_value=0).loc[idx].to_numpy()
+    r = returns.loc[idx].to_numpy()
+    rf = (px['^IRX'] / 100 / 252).shift(1).loc[idx].to_numpy()
+
+    weights = np.zeros(len(ASSETS))
+    rows = []
+    # The portfolio is flat before inception. Each new observation uses the weights held overnight.
+    spread_returns = np.zeros(p.pair_vol_days + delay - 1 + len(idx))
+    for i, day_returns in enumerate(r):
+        spread_returns[i + p.pair_vol_days + delay - 1] = weights[1:] @ day_returns[1:]
+        cash = 1 - weights.sum()
+        cash_rate = rf[i] + (p.fin_spread / 252 if cash < 0 else 0)
+        gross = weights @ day_returns + cash * cash_rate
+        gross -= np.abs(np.minimum(weights, 0)).sum() * p.short_fee / 252
+        drift = weights * (1 + day_returns) / (1 + gross)
+        target = drift.copy()
+        if use_spy and (i == 0 or rebalance[i]):
+            spread_vol = 0.0
+            if vol_budget:
+                window = spread_returns[i:i + p.pair_vol_days]
+                spread_vol = window.std(ddof=1) * np.sqrt(252)
+            budget = np.sqrt(max(p.target_vol ** 2 - spread_vol ** 2, 0))
+            target[0] = min(budget / spy_vol[i], p.max_lev)
+        if i == 0 or (targets[i] != targets[i - 1]).any():
+            target[1:] = targets[i]
+        turnover = np.abs(target - drift).sum()
+        rows.append((gross, gross - turnover * p.cost, turnover, target[0], np.abs(target).sum(), *target))
+        weights = target
+
+    columns = ['gross', 'net', 'turnover', 'w_spy', 'gross_exposure'] + [f'w_{a}' for a in ASSETS]
+    out = pd.DataFrame(rows[1:], index=idx[1:], columns=columns)
+    opening_turnover = rows[0][2]
+    opening_cost = opening_turnover * p.cost
+    # Compound the formation-close fee with the first trading day's return.
+    out.loc[idx[1], 'net'] = (1 - opening_cost) * (1 + out.loc[idx[1], 'net']) - 1
+    out.loc[idx[1], 'turnover'] += opening_turnover
+    out.attrs['opening_weights'] = tuple(rows[0][5:])
+    out.attrs['opening_cost'] = opening_cost
+    return out
 
 
 def monthly(r):
@@ -176,7 +197,7 @@ def stats(r_m, rf_m, bench_m):
         'Alpha t-stat': ols.tvalues.iloc[0],
         'Beta': beta,
         'Information ratio': a / ols.resid.std() * np.sqrt(12),
-        'Max drawdown (monthly)': (w / w.cummax() - 1).min(),
+        'Max drawdown (monthly)': (w / w.cummax().clip(lower=1) - 1).min(),
     })
 
 
@@ -214,7 +235,7 @@ def risk_stats(r_m, rf_m, bench_m):
         'Worst month': r_m.min(),
         'Positive months': (r_m > 0).mean(),
         'Sortino ratio': ex.mean() / np.sqrt((ex.clip(upper=0) ** 2).mean()) * np.sqrt(12),
-        'Calmar ratio': (w.iloc[-1] ** (12 / len(r_m)) - 1) / -(w / w.cummax() - 1).min(),
+        'Calmar ratio': (w.iloc[-1] ** (12 / len(r_m)) - 1) / -(w / w.cummax().clip(lower=1) - 1).min(),
         'Upside capture': r_m[up].mean() / b[up].mean(),
         'Downside capture': r_m[dn].mean() / b[dn].mean(),
         'Tracking error': act.std() * np.sqrt(12),
@@ -237,7 +258,7 @@ def monte_carlo(r_m, rf_m, bench_m, months=120, paths=10_000, block=12, seed=42)
     starts = np.random.default_rng(seed).integers(0, len(X) - block + 1, size=(paths, months // block))
     sim = X[(starts[..., None] + np.arange(block)).reshape(paths, -1)]          # paths x months x 3
     W = np.cumprod(1 + sim[..., :2], axis=1)
-    dd = (W / np.maximum.accumulate(W, axis=1) - 1).min(axis=1)
+    dd = (W / np.maximum(np.maximum.accumulate(W, axis=1), 1) - 1).min(axis=1)
     ex = sim[..., :2] - sim[..., 2:]
     sharpe = ex.mean(axis=1) / ex.std(axis=1, ddof=1) * np.sqrt(12)
     end = W[:, -1]
@@ -272,10 +293,12 @@ def run(px, p=Params()):
                          'Spread sleeve': rt(pair_only.net), 'S&P 500 TR': risk_stats(bench_m, rf_m, bench_m)})
     yearly = pd.DataFrame({'Strategy': (1 + bt.net).groupby(bt.index.year).prod() - 1,
                            'S&P 500 TR': (1 + bench_d).groupby(bench_d.index.year).prod() - 1})
-    P, chosen, _ = pair_targets(px, p)
+    _, chosen, _ = pair_targets(px, p)
+    close = bt.index[-1]
+    pair_year = close.year + int(close.month == 12 and month_end_flag(px.index)[px.index.get_loc(close)])
     yearly['Pair held'] = [('/'.join(chosen[y]) if p.pair_size > 0 else '–') for y in yearly.index]
     return dict(bt=bt, spy_only=spy_only, pair_only=pair_only, bench_d=bench_d, table=table, sleeves=sleeves, risk=risk,
                 rolling=rolling_greeks(monthly(bt.net), rf_m, bench_m),
                 mc=monte_carlo(monthly(bt.net), rf_m, bench_m) if len(bench_m) >= 24 else None,   # live 2026: too short
-                yearly=yearly, exposure_now=float(spy_exposure(px, p, pair_returns(px, P * p.pair_size)).loc[:p.end].iloc[-1]),
-                pair_now=chosen[max(chosen)])
+                yearly=yearly, exposure_now=float(bt.w_spy.iloc[-1]),
+                pair_year=pair_year, pair_now=chosen[pair_year] if p.pair_size > 0 else None)

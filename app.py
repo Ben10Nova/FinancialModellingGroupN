@@ -15,7 +15,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from strategy import ASSETS, Params, var_es, load_live, load_prices, monthly, pair_returns, pair_targets, run, spy_exposure, wealth
+from strategy import ASSETS, Params, var_es, load_live, load_prices, monthly, pair_targets, run, wealth
 from replay import replay
 from landing import landing
 
@@ -699,8 +699,10 @@ def attribution():
                                                  'Combined strategy': 'combined'}), 'combined')
     chart('growth of $1, log scale', [('combined', wealth(res['bt'].net), S1), ('equity sleeve', wealth(res['spy_only'].net), S2),
                                       ('spread sleeve', wealth(res['pair_only'].net), S3)])
-    html(f'<p>positioning at the {p.end[:4]} close: equity exposure <span class="fig">{res["exposure_now"]:.2f}x</span>, '
-         f'spread pair for {int(p.end[:4]) + 1}: <span class="fig">{"/".join(res["pair_now"]).lower()}</span>.</p>')
+    pair = (f'spread pair for {res["pair_year"]}: <span class="fig">{"/".join(res["pair_now"]).lower()}</span>'
+            if res['pair_now'] else 'spread sleeve off')
+    html(f'<p>positioning at the {res["bt"].index[-1]:%d %b %Y} close: equity exposure '
+         f'<span class="fig">{res["exposure_now"]:.2f}x</span>, {pair}.</p>')
 
 
 def live_2026():
@@ -727,7 +729,7 @@ def rule_budget():
     p, _ = results()
     left = max(p.target_vol ** 2 - 0.06 ** 2, 0) ** .5
     return [f'think of {p.target_vol:.0%} volatility as the total risk we are allowed to take. the spread sleeve goes first: we '
-            'measure how much it moved over the last 63 trading days. the equity sleeve gets what is left.',
+            'measure how much the positions actually held moved over the last 63 trading days. the equity sleeve gets what is left.',
             f'risks don\'t add up in a straight line, because the two sleeves don\'t move together. if the spread uses 6%, the '
             f'equity sleeve still gets &radic;({p.target_vol * 100:g}&sup2; &minus; 6&sup2;) = <span class="fig">{left:.1%}</span>, '
             f'not {p.target_vol - .06:.0%}.']
@@ -1006,11 +1008,10 @@ def investor():
 
     html('<h4>trades</h4>')
     d0 = px.index[px.index.get_loc(lb.index[0]) - 1]                # initial purchase at the last close of 2025
-    P = tgt * p0.pair_size
-    w0 = pd.Series([spy_exposure(px, p0, pair_returns(px, P)).loc[d0], *P.loc[d0]], index=ASSETS)
+    w0 = pd.Series(lb.attrs['opening_weights'], index=ASSETS)
     W = pd.concat([w0.to_frame(d0).T, W])
     gross = pd.concat([pd.Series(0.0, index=[d0]), lb.gross])
-    V = pd.concat([pd.Series(dep, index=[d0]), value])
+    V = pd.concat([pd.Series(dep * (1 - lb.attrs['opening_cost']), index=[d0]), value])
     eq_before = V.shift(1).fillna(dep) * (1 + gross)          # equity at each close, before that day's costs
     drift = W.shift(1).fillna(0) * (1 + px[ASSETS].pct_change().loc[W.index]) / (1 + gross).values[:, None]
     trades = ((W - drift) * eq_before.values[:, None]).stack()
