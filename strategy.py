@@ -300,5 +300,5 @@ def run(px, p=Params()):
     return dict(bt=bt, spy_only=spy_only, pair_only=pair_only, bench_d=bench_d, table=table, sleeves=sleeves, risk=risk,
                 rolling=rolling_greeks(monthly(bt.net), rf_m, bench_m),
                 mc=monte_carlo(monthly(bt.net), rf_m, bench_m) if len(bench_m) >= 24 else None,   # live 2026: too short
-                yearly=yearly, exposure_now=float(bt.w_spy.iloc[-1]),
+                yearly=yearly, rf_m=rf_m, exposure_now=float(bt.w_spy.iloc[-1]),
                 pair_year=pair_year, pair_now=chosen[pair_year] if p.pair_size > 0 else None)

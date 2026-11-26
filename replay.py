@@ -93,24 +93,23 @@ html,body{margin:0;background:transparent}
 .r{display:grid;grid-template-columns:124px minmax(0,1fr);gap:16px;padding:10px 0;border-bottom:.5px solid #e4e4e1;font-size:14px;line-height:1.55}
 .r .k{color:#0b2648;font-size:13.5px;font-weight:600}
 @media (max-width:540px){.r{grid-template-columns:1fr;gap:2px}}
-#body{overflow:hidden;transition:max-height .35s ease,opacity .3s;max-height:400px}
-#body.closed{max-height:0;opacity:0}
-#story{transition:opacity .3s}
+#plot{position:relative;margin-top:12px}
+.pop{position:absolute;top:4px;left:0;width:min(290px,58%);box-sizing:border-box;background:rgba(255,255,255,.96);border:1px solid #e1e1de;border-radius:12px;
+ box-shadow:0 8px 24px rgba(16,25,36,.10);padding:11px 14px 12px;font-size:13px;line-height:1.45;pointer-events:none;opacity:0;transition:left .35s ease,opacity .25s}
+.pop .yr{font-weight:600;font-size:14px}.pop .tt{font-weight:400}
+.pop .nb{color:#555b63;font-size:12px;margin:3px 0 6px;font-variant-numeric:tabular-nums}
+.pop .nb b{font-weight:600;color:#0b2648}
+@media (max-width:540px){.pop{width:68%;font-size:12px;padding:9px 11px}}
 .foot{margin:12px 0 0;font-size:12.5px;color:#848a90}
 .yt{cursor:pointer}
 </style>
 <div id="app">
   <p class="lede">$1 invested in <span id="l0"></span>: <b id="ls"></b> (S&amp;P 500 TR: <b id="lb"></b>) by <span id="l1"></span>.</p>
   <div class="hd"><b style="font-weight:500;font-size:15px">Growth of $1, log scale</b><div class="lg"><span style="color:#0b2648"><i style="background:#0b2648"></i>Portfolio (net)</span><span><i style="background:#848a90"></i>S&amp;P 500 TR</span></div></div>
-  <svg id="sv" viewBox="0 0 640 340" width="100%" style="display:block;margin-top:12px;overflow:visible" role="img" aria-label="Growth of $1, equity exposure and years"></svg>
+  <div id="plot"><svg id="sv" viewBox="0 0 640 340" width="100%" style="display:block;overflow:visible" role="img" aria-label="Growth of $1, equity exposure and years"></svg><div class="pop" id="pop" aria-live="polite"></div></div>
   <div class="ctl">
     <button id="pl">Play</button>
     <div class="start" id="startbox"><span>Start</span><input type="range" id="yr" step="1" aria-label="start year"><span id="yv" class="mono" style="font-size:12.5px;min-width:34px"></span></div>
-  </div>
-  <div id="story" aria-live="polite">
-    <div class="hd"><b id="sh" style="font-weight:500;font-size:15px"></b><span id="sn" class="mono" style="font-size:12.5px;color:#555b63"></span></div>
-    <div id="body"></div>
-    <div id="tgbox" style="margin-top:10px"><button id="tg" aria-expanded="true"><span id="tgt">Hide story</span><span id="tgi">&#8963;</span></button></div>
   </div>
   <p class="foot" id="foot">Full calendar-year returns, net of trading, financing and borrow costs.</p>
 </div>
@@ -123,7 +122,7 @@ const first=y=>D.m.findIndex(s=>+s.slice(0,4)===y);
 const last=y=>{let j=-1;D.m.forEach((s,i)=>{if(+s.slice(0,4)===y)j=i;});return j;};
 const yOf=i=>+D.m[i].slice(0,4),kOf=y=>YS.findIndex(o=>o.y===y);
 const L=48,W=640,GT=6,GB=236,ET=262,EB=300,AX=322;
-let yr=YS[0].y,st0=0,bs=1,bb=1,X,YY,cur=N-1,sel=0,tm=null,hd=null,on=false,open=true;
+let yr=YS[0].y,st0=0,bs=1,bb=1,X,YY,cur=N-1,sel=0,tm=null,hd=null,on=false;
 const vs=i=>i<st0?1:S[i]/bs,vb=i=>i<st0?1:B[i]/bb,EY=v=>EB-Math.min(v,2.2)/2.2*(EB-ET);
 const many=()=>YS.length-kOf(yr)>10;
 function init(){st0=first(yr);bs=st0?S[st0-1]:1;bb=st0?B[st0-1]:1;let lo=1,hi=1;for(let i=st0;i<N;i++){lo=Math.min(lo,vs(i),vb(i));hi=Math.max(hi,vs(i),vb(i));}
@@ -144,31 +143,30 @@ function render(n){$('ps').setAttribute('d',line(vs,n));$('pb').setAttribute('d'
 function mark(k){const y=YS[k].y,a=X(Math.max(first(y),st0)-1),b=X(last(y));$('hl').setAttribute('x',a);$('hl').setAttribute('width',b-a);$('hl').setAttribute('opacity',1);
  YS.forEach((o,j)=>{const u=$('u'+j),t=$('t'+j);if(!u)return;const s=j===k;u.setAttribute('opacity',s?1:0);t.setAttribute('fill',s?INK:MUTED);t.setAttribute('font-weight',s?500:400);t.setAttribute('opacity',s||((!many()||o.y%4===0)&&Math.abs(o.y-YS[k].y)>(many()?1:0))?1:0);});}
 const pct=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%';
-function story(k){const e=YS[k],s=$('story');s.style.opacity=0;setTimeout(()=>{
- $('sh').innerHTML=`${e.y}${e.t?` &nbsp;<span style="font-weight:400">${e.t}</span>`:''}`;
- $('sn').innerHTML=`Portfolio <b style="font-weight:500;color:${S1}">${pct(e.pf)}</b> &nbsp; S&amp;P 500 ${pct(e.sp)} &nbsp; Exposure ${e.ex.toFixed(2)}x`;
- $('body').innerHTML=e.h?`<div class="r" style="border-bottom:0"><span class="k">What happened</span><span>${e.h}</span></div>`:'';
- s.style.opacity=1;},180);}
-function toggle(){open=!open;$('body').classList.toggle('closed',!open);$('tgt').textContent=open?'Hide story':'Show story';$('tgi').innerHTML=open?'&#8963;':'&#8964;';$('tg').setAttribute('aria-expanded',open);setTimeout(fit,450);}
+function story(k){const e=YS[k],p=$('pop');p.style.opacity=0;setTimeout(()=>{
+ p.innerHTML=`<div><span class="yr">${e.y}</span>${e.t?` &nbsp;<span class="tt">${e.t}</span>`:''}</div>`+
+  `<div class="nb">Portfolio <b>${pct(e.pf)}</b> &nbsp;S&amp;P 500 ${pct(e.sp)} &nbsp;Exposure ${e.ex.toFixed(2)}x</div>`+(e.h?`<div>${e.h}</div>`:'');
+ const s=sv.getBoundingClientRect().width/W,y=e.y,a=X(Math.max(first(y),st0)-1)*s,b=X(last(y))*s,w=p.offsetWidth,box=$('plot').clientWidth;
+ p.style.left=((b+10+w<=box)?b+10:Math.max(0,a-10-w))+'px';p.style.opacity=1;},150);}
 function show(k,jump){sel=k;if(jump)cur=last(YS[k].y);render(cur);mark(k);story(k);}
 function playYear(){if(!on)return;const k=sel,end=last(YS[k].y);
- (function draw(){if(!on)return;if(cur<end){cur++;render(cur);tm=setTimeout(draw,180);return;}
-  const wait=D.stories&&open?(YS[k].c?6000:4200):1100;
+ (function draw(){if(!on)return;if(cur<end){cur++;render(cur);tm=setTimeout(draw,110);return;}
+  const wait=D.stories?(YS[k].c?3600:2600):800;
   hd=setTimeout(()=>{if(!on)return;if(k>=YS.length-1){stop();return;}sel=k+1;mark(sel);story(sel);render(cur);setTimeout(playYear,300);},wait);})();}
 function play(){if(on){stop();return;}on=true;$('pl').textContent='Pause';
  if(cur>=N-1){cur=st0-1;sel=kOf(yr);}else sel=kOf(yOf(Math.min(cur+1,N-1)));
  render(cur);mark(sel);story(sel);setTimeout(playYear,400);}
 function stop(){on=false;clearTimeout(tm);clearTimeout(hd);$('pl').textContent='Play';}
-$('pl').onclick=play;$('tg').onclick=toggle;
+$('pl').onclick=play;
 const ys=$('yr');ys.min=YS[0].y;ys.max=YS[YS.length-1].y-(YS.length>1?1:0);ys.value=yr;$('yv').textContent=yr;
 if(YS.length<2)$('startbox').style.display='none';
 ys.oninput=e=>{yr=+e.target.value;$('yv').textContent=yr;stop();init();cur=N-1;sel=Math.max(sel,kOf(yr));render(cur);mark(sel);story(sel);};
-if(!D.stories){$('tgbox').style.display='none';$('foot').textContent='Full calendar-year returns, net of trading, financing and borrow costs. The year stories describe the base case: reset the assumptions to see them.';}
+if(!D.stories){$('foot').textContent='Full calendar-year returns, net of trading, financing and borrow costs. The year stories describe the base case: reset the assumptions to see them.';}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();play();}
  if(e.key==='ArrowRight'){stop();show(Math.min(YS.length-1,sel+1),true);}if(e.key==='ArrowLeft'){stop();show(Math.max(kOf(yr),sel-1),true);}});
 const fit=()=>{try{const h=Math.ceil($('app').getBoundingClientRect().height)+4+'px';frameElement.style.height=h;const box=frameElement.parentElement;if(box){box.style.height=h;box.style.minHeight=h;box.style.flex="0 0 "+h;}}catch(e){}};  // the streamlit wrapper keeps the height passed from python, so resize it too
 const unfit=()=>{try{const box=frameElement.parentElement;if(box){box.style.height="";box.style.minHeight="";box.style.flex="";}}catch(e){}};  // streamlit reuses this wrapper for the next page's element: give its height back when the frame goes
 addEventListener("pagehide",unfit);addEventListener("unload",unfit);
-new ResizeObserver(fit).observe($('app'));$('body').addEventListener('transitionend',fit);
+new ResizeObserver(fit).observe($('app'));
 init();sel=Math.max(0,kOf(2008));if(sel<0)sel=0;render(cur);mark(sel);story(sel);fit();
 </script>"""
