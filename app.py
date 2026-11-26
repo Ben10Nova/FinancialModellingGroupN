@@ -15,7 +15,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from strategy import ASSETS, Params, var_es, load_live, load_prices, monthly, pair_targets, run, wealth
+from strategy import ASSETS, Params, load_live, load_prices, monthly, pair_targets, run, wealth
 from replay import replay
 from landing import landing
 
@@ -23,67 +23,63 @@ FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
 ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
 RESPONSIBLE = ('Noah van Raay', 'c/o Nova School of Business and Economics', 'Rua da Holanda 1', '2775-405 Carcavelos, Portugal')   # imprint
-CONTACT = '[email]'                                                                                     # imprint: required
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
 DEFAULTS = Params()
 CODE = hashlib.md5((Path(__file__).parent / 'strategy.py').read_bytes()).hexdigest()   # cache key: new code = new results
-DEMO_DEPOSIT, DEMO_START = 1000.0, '2026-01-01'
-CRISES = [  # s&p 500 peak and trough closes, what happened, what it shows
-    ('global financial crisis', '2007-10-09', '2009-03-09',
-     'the us housing bust turned into a banking crisis. lehman brothers failed in september 2008 and the s&amp;p 500 lost more than half its value.',
-     'the fall built up over many months, so the monthly reset had time to cut exposure before the worst of it.'),
-    ('euro debt crisis', '2011-04-29', '2011-10-03',
-     'markets feared that greece, italy and spain could not pay their debts, and the us lost its aaa rating in august.',
-     'markets were calm going in, so exposure was high when it hit. most of the drop came within a few weeks, faster than a monthly reset can react.'),
-    ('q4 2018 selloff', '2018-09-20', '2018-12-24',
-     'the fed kept raising rates while the trade war with china escalated. stocks fell almost 20% into christmas eve.',
-     'a calm summer meant exposure was close to the cap going in.'),
-    ('covid crash', '2020-02-19', '2020-03-23',
-     'the pandemic shut down economies and the s&amp;p 500 fell a third in about a month, the fastest crash on record.',
-     'the first leg down in late february hit at full exposure. the february month-end reset then cut it hard, which spared most of the march crash.'),
+MANDATE, DEMO_START = 100e6, '2026-01-01'           # sample mandate report: $100m from the 31 Dec 2025 close
+CRISES = [  # S&P 500 peak and trough closes, what happened, what it shows
+    ('Global financial crisis', '2007-10-09', '2009-03-09',
+     'The US housing bust turned into a banking crisis. Lehman Brothers failed in September 2008 and the S&amp;P 500 lost more than half its value.',
+     'The fall built up over many months, so the monthly reset had time to cut exposure before the worst of it.'),
+    ('Euro debt crisis', '2011-04-29', '2011-10-03',
+     'Markets feared that Greece, Italy and Spain could not pay their debts, and the US lost its AAA rating in August.',
+     'Markets were calm going in, so exposure was high when it hit. Most of the drop came within a few weeks, faster than a monthly reset can react.'),
+    ('Q4 2018 selloff', '2018-09-20', '2018-12-24',
+     'The Fed kept raising rates while the trade war with China escalated. Stocks fell almost 20% into Christmas Eve.',
+     'A calm summer meant exposure was close to the cap going in.'),
+    ('COVID crash', '2020-02-19', '2020-03-23',
+     'The pandemic shut down economies and the S&amp;P 500 fell a third in about a month, the fastest crash on record.',
+     'The first leg down in late February hit at full exposure. The February month-end reset then cut it hard, which spared most of the March crash.'),
     ('2022 rate shock', '2022-01-03', '2022-10-12',
-     'inflation hit a 40-year high and the fed raised rates faster than in decades. stocks and bonds fell together.',
-     'a slow grind lower, so exposure came down month by month as volatility picked up.')]
-UNSPLASH = 'https://images.unsplash.com/photo-{}?w=480&h=600&fit=crop&crop=faces&q=75'
-# photo: a file in assets/, a full image url, or an unsplash id (stock placeholder until the real photo is in)
+     'Inflation hit a 40-year high and the Fed raised rates faster than in decades. Stocks and bonds fell together.',
+     'A slow grind lower, so exposure came down month by month as volatility picked up.')]
+# photo: a file in assets/ or a full image url
 # bio: education, internships, focus within the fund. rendered as html (innerHTML), not plain text
 BIO_LUCAS = ('<p>BSc in International Business from Maastricht University, now completing an MSc in Finance at Nova SBE.</p>'
              '<p>Internships at KPMG, PradoNeo and Montag &amp; Montag.</p>'
-             '<ul><li>Works on the defensive sector spread: pair selection and the mean-reversion rules behind it.</li></ul>')
+             '<p>Worked on the defensive sector spread: how the pair is chosen and when it is traded.</p>')
 BIO_BEN = ('<p>BSc from Maastricht University, now completing an MSc in Finance at Nova SBE.</p>'
            '<p>Internships at Simon-Kucher, DZ Bank and H.C.F. Hanse Corporate Finance.</p>'
-           '<ul><li>Covers trade execution mechanics and the financing/borrow cost assumptions behind the strategy.</li></ul>')
+           '<p>Built the execution and cost model: trading costs, financing of leverage and the borrow fee on shorts.</p>')
 BIO_KATHA = ('<p>BBA from WHU &ndash; Otto Beisheim School of Management, now completing an MSc in Finance at Nova SBE.</p>'
              '<p>Internships at BlackFin Capital Partners, Roland Berger and PwC.</p>'
-             '<ul><li>Focuses on the volatility-targeted equity sleeve and how exposure scales with realized volatility.</li></ul>')
+             '<p>Worked on the volatility-targeted equity sleeve and how its exposure follows realised volatility.</p>')
 BIO_NOAH = ('<p>BSc from the University of Münster, now completing an MSc in Finance at Nova SBE.</p>'
             '<p>Internships at Triton Partners, UBS and BNP Paribas CIB.</p>'
-            '<ul><li>Leads the risk framework: volatility targeting, drawdowns and the stress-test scenarios.</li>'
-            '<li>Reviews capital allocation between the equity and spread sleeves each month.</li></ul>')
+            '<p>Led the risk work: the shared volatility budget, drawdowns, stress tests and the Monte Carlo simulation.</p>')
 BIO_HENRIK = ('<p>BSc in International Business from Maastricht University, now completing an MSc in Finance at Nova SBE.</p>'
               '<p>Internships at Liberta Partners, REIA Capital and Deloitte.</p>'
-              '<ul><li>Oversees portfolio construction across both sleeves and the fund&rsquo;s overall risk budget.</li>'
-              '<li>Main point of contact for investor reporting.</li></ul>')
+              '<p>Put the two sleeves together into one portfolio and wrote up the investment case.</p>')
 BIO_CHRIS = ('<p>BBA in International Finance from the University of Augsburg, now completing an MSc in Finance at Nova SBE.</p>'
              '<p>Internships at EY and Salesfive.</p>'
-             '<ul><li>Maintains performance tracking and the monthly return attribution between sleeves.</li></ul>')
+             '<p>Built the performance tables and the return attribution between the two sleeves.</p>')
 TEAM = [  # name, title, photo, bio (html), linkedin url ('' hides the icon)
-    ('lucas s', 'investor', 'assets/lucas_strobel.jpg', BIO_LUCAS, ''),
-    ('ben s', 'investor', 'assets/ben_s.jpg', BIO_BEN, ''),
-    ('katha g', 'investor', 'assets/katha_g.jpg', BIO_KATHA, ''),
-    ('noah vr', 'investor', 'assets/noah_vr.jpg', BIO_NOAH, ''),
-    ('henrik t', 'investor', 'assets/henrik_trillhaas.jpg', BIO_HENRIK, ''),
-    ('chris w', 'investor', 'assets/chris_w.jpg', BIO_CHRIS, '')]
+    ('Lucas S.', 'Sector spread', 'assets/lucas_strobel.jpg', BIO_LUCAS, ''),
+    ('Ben S.', 'Execution and costs', 'assets/ben_s.jpg', BIO_BEN, ''),
+    ('Katha G.', 'Equity sleeve', 'assets/katha_g.jpg', BIO_KATHA, ''),
+    ('Noah v. R.', 'Risk', 'assets/noah_vr.jpg', BIO_NOAH, ''),
+    ('Henrik T.', 'Portfolio construction', 'assets/henrik_trillhaas.jpg', BIO_HENRIK, ''),
+    ('Chris W.', 'Performance and attribution', 'assets/chris_w.jpg', BIO_CHRIS, '')]
 LOADER = ('M0,134.8 5,134.4 10,137.7 15,132.2 20,128.2 25,128.8 30,127.6 35,126.4 41,127.5 46,129.3 51,131.2 56,130.3 61,129.5 66,129.5 71,124.2 76,123.9 81,124.0 86,120.1 91,123.6 96,119.8 101,115.4 106,112.6 111,114.6 116,115.9 122,113.9 127,110.9 132,110.7 137,109.9 142,107.3 147,104.5 152,103.1 157,98.8 162,100.2 167,97.1 172,94.1 177,90.5 182,89.7 187,87.2 192,84.7 197,84.4 203,85.2 208,84.5 213,83.0 218,83.1 223,77.8 228,72.6 233,68.5 238,67.4 243,63.9 248,67.8 253,63.8 258,67.2 263,65.0 268,62.8 273,66.0 278,64.7 284,60.9 289,48.8 294,48.8 299,48.5 304,51.0 309,46.0 314,44.0 319,42.5 324,42.8 329,44.4 334,42.5 339,42.7 344,39.2 349,36.9 354,31.3 359,33.5 365,27.2 370,27.0 375,21.6 380,18.8 385,14.9 390,14.7 395,12.6 400,10.0',                # all-time growth of $1, log scale, quarterly: portfolio
           'M0,135.2 5,134.1 10,134.9 15,131.7 20,129.9 25,128.5 30,129.0 35,126.4 41,130.8 46,130.4 51,133.7 56,144.0 61,150.0 66,147.5 71,142.4 76,140.3 81,138.7 86,134.6 91,137.3 96,134.3 101,130.8 106,128.4 111,130.3 116,131.3 122,129.2 127,126.5 132,126.8 137,125.7 142,123.1 147,120.4 152,118.0 157,116.2 162,115.4 167,113.1 172,111.9 177,109.9 182,110.2 187,108.3 192,107.7 197,108.0 203,110.5 208,107.8 213,105.6 218,106.2 223,103.3 228,101.3 233,99.7 238,97.9 243,94.0 248,96.4 253,93.8 258,95.1 263,95.0 268,91.4 273,90.7 278,89.8 284,87.2 289,91.1 294,86.3 299,86.2 304,81.0 309,76.2 314,74.1 319,72.1 324,72.7 329,76.1 334,75.9 339,78.3 344,76.1 349,75.1 354,71.1 359,74.5 365,68.7 370,67.0 375,63.2 380,61.8 385,59.4 390,62.5 395,57.3 400,54.2')                   # and s&p 500 tr
 INK, MUTED, HAIR = '#101924', '#555b63', '#d7d7d7'
-S1, S2, S3 = '#0b2648', '#848a90', '#a36d34'                   # portfolio, s&p / equity sleeve, spread sleeve
+S1, S2, S3 = '#0b2648', '#848a90', '#7d93b2'                   # portfolio, S&P / equity sleeve, spread sleeve
 
 for f in (Path(__file__).parent / 'fonts').glob('*.ttf'):
     font_manager.fontManager.addfont(str(f))
 plt.rcParams.update({
     'figure.facecolor': 'white', 'axes.facecolor': 'white', 'figure.dpi': 200,
-    'font.family': 'monospace', 'font.monospace': ['IBM Plex Mono', 'DejaVu Sans Mono'], 'font.size': 8,
+    'font.family': 'sans-serif', 'font.sans-serif': ['IBM Plex Sans', 'DejaVu Sans'], 'font.size': 8.5,
     'axes.spines.top': False, 'axes.spines.right': False, 'axes.spines.left': False, 'axes.spines.bottom': False,
     'axes.grid': False,
     'xtick.color': MUTED, 'ytick.color': MUTED, 'xtick.major.size': 0, 'ytick.major.size': 0,
@@ -92,7 +88,7 @@ plt.rcParams.update({
 st.set_page_config(page_title='MVP Strategies', layout='centered', initial_sidebar_state='collapsed')
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
 :root { --paper:#ffffff; --ink:#101924; --muted:#555b63; --hairline:#d7d7d7; --panel:#f5f5f5; --inputline:#7c8186;
   --negative:#8c2d2b; --soft:#f5f5f7; --line:#d2d2d7; --r:18px; --serif:"Newsreader",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,monospace; }
@@ -102,7 +98,7 @@ html, body, .stApp, .stApp *:where(:not([data-testid="stIconMaterial"])), [role=
 [data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"],
 [data-testid="stDecoration"], footer, #MainMenu, [data-testid="stHeaderActionElements"], [data-testid="stElementToolbar"],
 [data-testid="stStatusWidget"] { display: none !important; }
-[data-testid="stHeader"] { background: transparent !important; }
+[data-testid="stHeader"] { background: var(--paper) !important; border-bottom: 1px solid var(--hairline); }
 .block-container { max-width: 860px; padding: 6rem 1.25rem 6rem; }
 p, li, label { font-size: 15px !important; line-height: 1.6; }
 
@@ -148,18 +144,18 @@ p.addr { text-align: center; color: var(--muted) !important; margin: 10px 0 0; }
 a, a * { color: var(--ink) !important; text-decoration: underline !important; text-underline-offset: 3px; }
 p.note, p.note * { font-size: 12.5px !important; color: var(--muted) !important; }
 p.lede { font-family: var(--serif) !important; font-size: 19px !important; line-height: 1.45; max-width: 60ch; }
-p.lede strong, .fig { font-family: var(--mono) !important; font-weight: 500; font-size: .92em !important; }
+p.lede strong, .fig { font-family: var(--sans) !important; font-variant-numeric: tabular-nums lining-nums; font-weight: 600; }
 .stApp p.fine, .stApp p.fine * { font-size: 11.5px !important; line-height: 1.55; color: var(--muted) !important; }
 .items { list-style: none; margin: 0 0 16px; padding: 0; max-width: 72ch; }
 .items > li { display: grid; grid-template-columns: 28px 1fr; margin: 0; padding: 9px 0; }
-.items .mk { font-family: var(--mono) !important; font-size: 12px !important; line-height: 24px; color: var(--muted) !important; }
+.items .mk { font-family: var(--sans) !important; font-variant-numeric: tabular-nums lining-nums; font-size: 13px !important; line-height: 24px; color: var(--muted) !important; }
 
 /* tables */
 table.plain { width: 100%; border-collapse: collapse; margin: 6px 0 10px; }
 table.plain, table.plain tr, table.plain td, table.plain th { border: 0 !important; background: none !important; }
 table.plain th { font-size: 11px !important; font-weight: 500; letter-spacing: .04em; color: var(--muted) !important;
   text-align: right; vertical-align: bottom; padding: 0 0 6px 14px; border-bottom: 1px solid var(--ink) !important; }
-table.plain td { font-family: var(--mono) !important; font-size: 12.5px !important; font-variant-numeric: tabular-nums;
+table.plain td { font-family: var(--sans) !important; font-variant-numeric: tabular-nums lining-nums; font-size: 13.5px !important;
   text-align: right; white-space: nowrap; padding: 6px 0 6px 14px; border-bottom: 1px solid var(--hairline) !important; }
 table.plain th:first-child, table.plain td:first-child { text-align: left; padding-left: 0; }
 table.plain td.label { font-family: var(--sans) !important; font-size: 13.5px !important; white-space: normal; }
@@ -169,6 +165,8 @@ table.plain td.dim { color: var(--muted) !important; }
 table.plain tr.total td { font-weight: 600; border-bottom: 0 !important; }
 table.plain tr.first td { border-top: 1px solid var(--ink) !important; }
 table.plain.compact td { padding-top: 4px; padding-bottom: 4px; }
+table.plain.terms td { text-align: left; white-space: normal; font-size: 14px !important; padding: 9px 0 9px 14px; vertical-align: top; }
+table.plain.terms td.label { width: 28%; font-weight: 500; padding-left: 0; }
 
 /* form */
 .st-key-knobs { padding: 16px; gap: 10px !important; }
@@ -180,7 +178,7 @@ table.plain.compact td { padding-top: 4px; padding-bottom: 4px; }
 [data-testid="stNumberInputContainer"], [data-baseweb="select"] > div, [data-testid="stTextInputRootElement"] {
   border: 1px solid var(--inputline) !important; min-height: 36px; border-radius: 0 !important; }
 [data-baseweb="input"] { border: 0 !important; }
-input, [data-baseweb="select"] * { font-family: var(--mono) !important; font-size: 13px !important; background: transparent !important; }
+input, [data-baseweb="select"] * { font-family: var(--sans) !important; font-variant-numeric: tabular-nums lining-nums; font-size: 14px !important; background: transparent !important; }
 [data-testid="stNumberInputStepDown"], [data-testid="stNumberInputStepUp"] { border-radius: 0 !important;
   background: var(--paper) !important; border-left: 1px solid var(--hairline) !important; color: var(--muted) !important; }
 button[kind="primaryFormSubmit"], button[kind="primary"] { border-radius: 0 !important; background: var(--ink) !important;
@@ -195,7 +193,7 @@ button[kind="tertiaryFormSubmit"] *, button[kind="tertiary"] *, .stDownloadButto
 .st-key-knobs [data-testid="stColumn"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 12px !important; }
 .st-key-knobs [data-testid="stColumn"] [data-testid="stColumn"] { min-width: 0 !important; }
 [data-testid="stSliderThumbValue"], [data-testid="stSliderTickBarMin"], [data-testid="stSliderTickBarMax"] {
-  font-family: var(--mono) !important; font-size: 11px !important; }
+  font-family: var(--sans) !important; font-variant-numeric: tabular-nums lining-nums; font-size: 12px !important; }
 p.status i { display: inline-block; width: 9px; height: 9px; margin-right: 10px; border-radius: 50%; border: 1.5px solid var(--muted); }
 p.status.on i { background: var(--ink); border-color: var(--ink); }
 
@@ -213,14 +211,14 @@ p.chart-head i { display: inline-block; width: 14px; height: 2px; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"] { width: 100%; display: block; position: relative; text-align: left;
   padding: 9px 0 9px 28px !important; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"]::before { content: counter(it); position: absolute; left: 0; top: 9px;
-  font-family: var(--mono); font-size: 12px; line-height: 24px; color: var(--muted); }
+  font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: 13px; line-height: 24px; color: var(--muted); }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"] * { font-size: 15px !important; line-height: 1.6; text-decoration: none !important;
   text-align: left; white-space: normal; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"] strong, .stApp .st-key-stress button[kind="tertiary"] p {
   text-decoration: underline !important; text-decoration-thickness: 1px !important; text-underline-offset: 3px; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"]:hover, .stApp .st-key-stress button[kind="tertiary"]:hover { background: var(--panel) !important; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"] p::after, .stApp .st-key-stress button[kind="tertiary"] p::after {
-  content: "↗"; margin-left: 6px; font-family: var(--mono); font-size: 13px; color: var(--ink); display: inline-block; text-decoration: none; }
+  content: "↗"; margin-left: 6px; font-family: var(--sans); font-size: 13px; color: var(--ink); display: inline-block; text-decoration: none; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"]:hover *, .stApp .st-key-stress button[kind="tertiary"]:hover * { color: var(--muted) !important; }
 .st-key-stress { gap: 0 !important; }
 .st-key-stress [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 14px !important; padding: 6px 0;
@@ -231,13 +229,14 @@ p.chart-head i { display: inline-block; width: 14px; height: 2px; }
 .st-key-stress p { margin: 0 !important; }
 .st-key-stress [data-testid="stMarkdownContainer"] { margin-bottom: 0 !important; }
 .st-key-stress p.th { font-size: 11px !important; font-weight: 500; letter-spacing: .04em; color: var(--muted) !important; text-align: right; }
-.st-key-stress p.c { font-family: var(--mono) !important; font-size: 12.5px !important; font-variant-numeric: tabular-nums; text-align: right; }
+.st-key-stress p.c { font-family: var(--sans) !important; font-variant-numeric: tabular-nums lining-nums; font-size: 13.5px !important; text-align: right; }
 .st-key-stress p.c.em { font-weight: 600; } .st-key-stress p.c.neg { color: var(--negative) !important; }
 .st-key-stress p.dim { font-size: 12.5px !important; color: var(--muted) !important; text-align: left; } .st-key-stress p.th.l { text-align: left; }
 .stApp .st-key-stress button[kind="tertiary"] * { font-size: 13.5px !important; text-align: left; }
 .st-key-stress p.win { display: none; }
 [role="dialog"] :not([data-testid="stMarkdown"]) > [data-testid="stMarkdownContainer"] p { font-family: var(--serif) !important; font-weight: 500 !important; font-size: 28px !important; }
-img.chart { display: block; width: 100%; height: auto; margin: 6px 0 0; }
+img.chart { display: block; width: 100%; height: auto; margin: 6px 0 18px; }
+img.chart.m { display: none; }
 
 /* soft ios layer: rounded grey panels, pill buttons, segmented control, frosted pop-up backdrop. tables and charts stay plain */
 .stApp .st-key-knobs, .stApp [data-testid="stForm"] { background: var(--soft) !important; border: 0 !important; border-radius: var(--r) !important;
@@ -257,7 +256,7 @@ img.chart { display: block; width: 100%; height: auto; margin: 6px 0 0; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"]::before { left: 12px; top: 10px; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"]:hover { background: var(--soft) !important; }
 .stApp [class*="st-key-dv_"] button[kind="tertiary"]:hover * { color: var(--ink) !important; }
-.stApp .st-key-stress [data-testid="stHorizontalBlock"]:has(button) { border-radius: 12px; transition: background .2s !important; }
+.stApp .st-key-stress [data-testid="stHorizontalBlock"]:has(button) { border-radius: 0; transition: background .2s !important; }
 .stApp .st-key-stress [data-testid="stHorizontalBlock"]:has(button):hover { background: var(--soft); }
 .stApp .st-key-stress button[kind="tertiary"]:hover { background: none !important; }
 .stApp .st-key-stress button[kind="tertiary"]:hover * { color: var(--ink) !important; }
@@ -268,37 +267,38 @@ img.chart { display: block; width: 100%; height: auto; margin: 6px 0 0; }
 [data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) > [data-testid="stColumn"] { min-width: 0 !important; }
 [data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) .stButton { display: flex; justify-content: flex-end; }
 
-/* risk profile: paired bars */
-.rg { margin: 18px 0 8px; }
-.rg p.rt { font-size: 13px !important; font-weight: 600; margin: 0 0 6px !important; }
-.rg p.rt span { font-weight: 400; color: var(--muted) !important; font-size: 12px !important; margin-left: 6px; }
-.rr { display: grid; grid-template-columns: 190px 1fr; align-items: center; gap: 14px; padding: 7px 0; }
-.rr span.rl { font-size: 13.5px !important; }
-.rb { display: flex; align-items: center; gap: 10px; height: 18px; }
-.rb i { display: block; height: 12px; border-radius: 6px; background: #0b2648; min-width: 2px; }
-.rb.s i { background: #c9ccd0; }
-.rb em { font-style: normal; font-family: var(--mono) !important; font-size: 12px !important; white-space: nowrap; }
-.rb.s em { color: var(--muted) !important; }
 .stApp [data-testid="stExpander"] details { border: 0 !important; border-radius: 14px !important; background: var(--soft); }
 .stApp [data-testid="stExpander"] summary p { font-size: 13px !important; }
 
-/* investor account */
+/* footer on every page */
+.site-foot { margin: 72px 0 0; padding: 16px 0 0; border-top: 1px solid var(--hairline); }
+.site-foot p, .site-foot a { font-size: 12.5px !important; line-height: 1.55; color: var(--muted) !important; }
+.site-foot p.links { margin-top: 8px; }
+
+/* top navigation */
+[data-testid="stTopNavLinkContainer"] a, [data-testid="stTopNavLink"] { text-decoration: none !important; }
+[data-testid="stTopNavLink"] *, [data-testid="stTopNavSection"] * { font-size: 14px !important; color: var(--ink) !important; text-decoration: none !important; }
+[data-testid="stTopNavLink"][aria-current="page"] * { font-weight: 600 !important; }
+[data-baseweb="popover"] a, [data-baseweb="popover"] a * { text-decoration: none !important; font-size: 14px !important; }
+
+/* sample mandate report */
 .hero { margin: 28px 0 8px; }
 .hero p { margin: 0 !important; }
 .hero p.k { font-size: 12.5px !important; color: var(--muted) !important; }
 .hero p.big { font-family: var(--serif) !important; font-size: 64px !important; font-weight: 400; line-height: 1.1;
   letter-spacing: -.02em; font-variant-numeric: tabular-nums lining-nums; margin: 2px 0 6px !important; }
 .hero p.chg, .hero p.chg span { font-size: 14px !important; }
-.hero p.chg span:first-child { font-family: var(--mono) !important; font-weight: 500; }
+.hero p.chg span:first-child { font-family: var(--sans) !important; font-variant-numeric: tabular-nums lining-nums; font-weight: 600; }
 .hero span.neg { color: var(--negative) !important; } .hero span.dim { color: var(--muted) !important; }
 
 @media (max-width: 640px) {
-  .rr { grid-template-columns: 1fr; gap: 4px; }
+  img.chart.d { display: none; } img.chart.m { display: block; }
+  input, textarea, [data-baseweb="select"] * { font-size: 16px !important; }
   h1.bh { font-size: 46px !important; } p.long { font-size: 17px !important; } .stApp h3 { font-size: 28px !important; }
   .st-key-stress [data-testid="stColumn"]:has(p.dim), .st-key-stress [data-testid="stColumn"]:has(p.wh) { display: none !important; }
   .stApp .st-key-stress button[kind="tertiary"] * { font-size: 12.5px !important; line-height: 1.35; }
   .st-key-stress p.c { font-size: 11.5px !important; } .st-key-stress p.th { font-size: 10px !important; }
-  .st-key-stress p.win { display: block; white-space: nowrap; font-size: 10px !important; font-family: var(--mono) !important; color: var(--muted) !important; }
+  .st-key-stress p.win { display: block; white-space: nowrap; font-size: 11px !important; color: var(--muted) !important; }
   .hero p.big { font-size: 46px !important; }
 }
 </style>
@@ -307,19 +307,22 @@ img.chart { display: block; width: 100%; height: auto; margin: 6px 0 0; }
 html = lambda s: st.markdown(s, unsafe_allow_html=True)
 heading = lambda t: html(f'<h3>{t}</h3>')
 note = lambda t: html(f'<p class="note">{t}</p>')
-ROWS = {'Ann. avg return': 'ann. return', 'Ann. volatility': 'ann. volatility', 'Sharpe ratio': 'sharpe ratio',
-        'Alpha (ann.)': 'alpha (ann.)', 'Alpha t-stat': 'alpha t-stat', 'Beta': 'beta',
-        'Information ratio': 'information ratio', 'Max drawdown (monthly)': 'max drawdown (monthly)'}
-ROWS |= {'Skewness': 'skewness', 'Excess kurtosis': 'excess kurtosis', 'VaR 95%, historical': 'value at risk 95%, historical',
-         'VaR 95%, normal': 'value at risk 95%, normal', 'VaR 99%, normal': 'value at risk 99%, normal',
-         'VaR 99%, Cornish-Fisher': 'value at risk 99%, cornish-fisher', 'CVaR 95% (expected shortfall)': 'expected shortfall 95%',
-         'Worst month': 'worst month', 'Positive months': 'positive months', 'Sortino ratio': 'sortino ratio',
-         'Calmar ratio': 'calmar ratio', 'Upside capture': 'upside capture', 'Downside capture': 'downside capture',
-         'Tracking error': 'tracking error', 'Active IR (vs S&P 500 TR)': 'active information ratio',
-         'Alpha t-stat, Newey-West': 'alpha t-stat, newey-west'}
-PCT_ROWS = {'ann. return', 'ann. volatility', 'alpha (ann.)', 'max drawdown (monthly)', 'value at risk 95%, historical',
-            'value at risk 95%, normal', 'value at risk 99%, normal', 'value at risk 99%, cornish-fisher',
-            'expected shortfall 95%', 'worst month', 'positive months', 'upside capture', 'downside capture', 'tracking error'}
+PF, SP = 'Portfolio (net)', 'S&amp;P 500 TR'                          # column labels
+ROWS = {  # table row labels; the keys are strategy.py's row names
+    'Ann. avg return': 'Average annual return (arithmetic)', 'Ann. volatility': 'Volatility (annualised)',
+    'Sharpe ratio': 'Sharpe ratio', 'Alpha (ann.)': 'Alpha (annualised)', 'Alpha t-stat': 'Alpha t-statistic', 'Beta': 'Beta',
+    'Information ratio': 'Information ratio', 'Max drawdown (monthly)': 'Max drawdown (month-end)',
+    'Max drawdown (daily)': 'Max drawdown (daily)',
+    'Skewness': 'Skewness', 'Excess kurtosis': 'Excess kurtosis', 'VaR 95%, historical': 'Value at risk 95%, historical',
+    'VaR 95%, normal': 'Value at risk 95%, normal', 'VaR 99%, normal': 'Value at risk 99%, normal',
+    'VaR 99%, Cornish-Fisher': 'Value at risk 99%, Cornish-Fisher', 'CVaR 95% (expected shortfall)': 'Expected shortfall 95%',
+    'Worst month': 'Worst month', 'Positive months': 'Share of positive months', 'Sortino ratio': 'Sortino ratio',
+    'Calmar ratio': 'Calmar ratio', 'Upside capture': 'Upside capture', 'Downside capture': 'Downside capture',
+    'Tracking error': 'Tracking error', 'Active IR (vs S&P 500 TR)': 'Information ratio against the S&amp;P 500 TR',
+    'Alpha t-stat, Newey-West': 'Alpha t-statistic, Newey-West'}
+PCT_ROWS = {'Ann. avg return', 'Ann. volatility', 'Alpha (ann.)', 'Max drawdown (monthly)', 'Max drawdown (daily)',
+            'VaR 95%, historical', 'VaR 95%, normal', 'VaR 99%, normal', 'VaR 99%, Cornish-Fisher',
+            'CVaR 95% (expected shortfall)', 'Worst month', 'Positive months', 'Upside capture', 'Downside capture', 'Tracking error'}
 
 
 def num(v, kind='pct'):
@@ -327,7 +330,7 @@ def num(v, kind='pct'):
     if pd.isna(v):
         return '–', ''
     v = round(float(v), 8) + 0.0
-    s = {'pct': f'{v:.1%}', 'x': f'{v:.2f}', 'usd': f'${abs(v):,.2f}'}[kind]
+    s = {'pct': f'{v:.1%}', 'x': f'{v:.2f}', 'usd': f'${abs(v):,.2f}', 'm': f'${abs(v) / 1e6:,.2f}m'}[kind]
     return ('−' + s.lstrip('-') if v < 0 else s), ('neg' if v < 0 else '')
 
 
@@ -337,24 +340,31 @@ def td(v, kind='pct', cls=''):
 
 
 def metrics_table(df, bold):
-    df = df.rename(index=ROWS)
     head = '<tr><th></th>' + ''.join(f'<th>{c}</th>' for c in df.columns) + '</tr>'
-    body = ''.join(f'<tr><td class="label">{i}</td>' + ''.join(
+    body = ''.join(f'<tr><td class="label">{ROWS.get(i, i)}</td>' + ''.join(
         td(v, 'pct' if i in PCT_ROWS else 'x', 'em' if c == bold else '') for c, v in row.items()) + '</tr>'
         for i, row in df.iterrows())
     html(f'<table class="plain">{head}{body}</table>')
 
 
 def show(fig):
-    fig.tight_layout(pad=.3)
-    buf = BytesIO()                            # inline png: no separate media file that a redeploy or reload can lose
-    fig.savefig(buf, format='png')
-    html(f'<img class="chart" alt="" src="data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}">')
+    """inline png (no media file a redeploy can lose), drawn twice: full width for desktop and narrower for phones,
+    so phone labels stay readable instead of shrinking with the picture"""
+    imgs = []
+    for cls, w in (('d', None), ('m', 4.2)):
+        if w:
+            wd, ht = fig.get_size_inches()
+            fig.set_size_inches(w, ht * 1.3)
+        fig.tight_layout(pad=.3)
+        buf = BytesIO()
+        fig.savefig(buf, format='png')
+        imgs.append(f'<img class="chart {cls}" alt="" src="data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}">')
+    html(''.join(imgs))
     plt.close(fig)
 
 
 def chart(title, series, kind='growth', h=2.9, bands=()):
-    legend = ''.join(f'<span><i style="background:{c}"></i>{n}</span>' for n, _, c in series)
+    legend = ''.join(f'<span><i style="background:{c}"></i>{n}</span>' for n, _, c in series) if len(series) > 1 else ''
     html(f'<p class="chart-head"><b>{title}</b>{legend}</p>')
     fig, ax = plt.subplots(figsize=(8, h))
     for k, (_, s, c) in enumerate(series):
@@ -380,7 +390,7 @@ def chart(title, series, kind='growth', h=2.9, bands=()):
             dec = 2 if max(s.max() for _, s, _ in series) < 10 else 0
             ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'${v:,.{dec}f}'))
         ax.xaxis.set_major_locator(MonthLocator())
-        ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: num2date(v).strftime('%b').lower()))
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: num2date(v).strftime('%b')))
     show(fig)
 
 
@@ -436,30 +446,31 @@ def results():
 
 # ================================================================ pages
 def home():
-    try:                                                           # hero at the notebook defaults
+    try:                                                           # hero at the base case
         landing(get_results(CODE, **asdict(DEFAULTS)), FUND, FUND_LONG, ADDRESS)
-    except RuntimeError:                                           # no prices (yahoo limit): plain name and address
-        html(f'<div class="home"><div class="mid"><h1 class="bh">{FUND}</h1><p class="long">{FUND_LONG}<br>Strategies</p>'
-             f'<p class="addr">{ADDRESS}</p></div></div>')
+    except RuntimeError:                                           # no prices (Yahoo limit): plain name
+        html(f'<div class="home"><div class="mid"><h1 class="bh">{FUND}</h1><p class="long">{FUND_LONG}</p></div></div>')
     with st.container(key='foot', horizontal=True, horizontal_alignment='center', gap='medium'):
-        if st.button('imprint', type='tertiary'):
-            dive('imprint', lambda: html(
-                f'<p>{FUND} is a student project for the course 2270 financial modeling at nova sbe. it is not a company '
+        if st.button('Imprint', type='tertiary'):
+            dive('Imprint', lambda: html(
+                f'<p>{FUND} is a student project for the course 2270 Financial Modeling at Nova SBE. It is not a company '
                 'or a registered investment firm and offers no financial services.</p>'
-                f'<p>responsible for this website:<br>{"<br>".join(RESPONSIBLE)}<br>email: {CONTACT}</p>'
-                '<p>all figures are hypothetical backtests on historical data. nothing on this site is investment advice or '
-                'an offer to buy or sell any security. past performance does not predict future results.</p>'
-                '<p>we check our content carefully but give no guarantee that it is complete, correct or up to date. we are '
+                f'<p>Responsible for this website:<br>{"<br>".join(RESPONSIBLE)}</p>'
+                '<p>All figures are hypothetical backtests on historical data. Nothing on this site is investment advice or '
+                'an offer to buy or sell any security. Past performance does not predict future results.</p>'
+                '<p>We check our content carefully but give no guarantee that it is complete, correct or up to date. We are '
                 'not responsible for the content of external sites we link to.</p>'
-                '<p>privacy: we don\'t set cookies or collect personal data ourselves. the investor login is a demo and stores '
-                'nothing you type. the site runs on streamlit community cloud, and fonts and photos load from google fonts '
-                'and unsplash, which receive your ip address when you visit.</p>'
-                '<p>market data: yahoo finance. photos: unsplash.</p>'))
-        if st.button('data & method', type='tertiary'):
-            dive('data & method', lambda: html(
-                '<p>data: yahoo finance (split/dividend adjusted), ^SP500TR, ^IRX.<br>statistics on monthly returns; '
-                'means &times;12, volatility &times;&radic;12, beta not annualized.</p>'
-                f'<p><a href="{COLAB}">notebook</a> &middot; <a href="{REPO}">source code</a></p>'))
+                '<p>Privacy: we don\'t set cookies or collect personal data ourselves. The sample mandate report stores nothing '
+                'you enter. The site runs on Streamlit Community Cloud, and fonts load from Google Fonts, which receives your '
+                'IP address when you visit.</p>'
+                '<p>Market data: Yahoo Finance.</p>'))
+        if st.button('Data and method', type='tertiary'):
+            dive('Data and method', lambda: html(
+                '<p>Data from Yahoo Finance, adjusted for splits and dividends: SPY, the nine original Select Sector SPDR ETFs, '
+                'the S&amp;P 500 total return index (^SP500TR) and the 13-week T-bill yield (^IRX).</p>'
+                '<p>Statistics use monthly returns. Means are multiplied by 12, volatilities by &radic;12, and beta is not '
+                'annualised.</p>'
+                f'<p><a href="{COLAB}">Notebook</a> &middot; <a href="{REPO}">Source code</a></p>'))
 
 
 def sleeve_facts():
@@ -473,50 +484,77 @@ def sleeve_facts():
 def thesis_equity():
     p, sl, _, sp_dd = sleeve_facts()
     e = sl['Vol-managed SPY only']
-    return ['volatility comes in clusters. a wild week is usually followed by another wild week, a calm month by another '
-            'calm month. and markets tend to fall hardest when they are already nervous.',
-            f'so we don\'t hold a fixed amount of the s&amp;p 500. at each month-end we check how much spy moved over the last '
-            f'21 trading days and size the position so its risk lands on target. calm market: bigger position, up to '
-            f'{p.max_lev:.2f}x. nervous market: smaller position, the rest sits in t-bills.',
-            f'on its own this sleeve made <span class="fig">{num(e["Ann. avg return"])[0]}</span> a year with a worst drawdown '
-            f'of <span class="fig">{num(e["Max drawdown (monthly)"])[0]}</span>. the s&amp;p 500: '
+    return ['Volatility comes in clusters. A wild week is usually followed by another wild week, and a calm month by another '
+            'calm month. Markets also tend to fall hardest when they are already nervous.',
+            f'So we don\'t hold a fixed amount of the S&amp;P 500. At each month-end we check how much SPY moved over the last '
+            f'21 trading days and size the position so that its risk lands on target. In a calm market the position is bigger, '
+            f'up to {p.max_lev:.2f}x. In a nervous market it is smaller, and the rest sits in T-bills.',
+            f'On its own this sleeve returned <span class="fig">{num(e["Ann. avg return"])[0]}</span> a year, with a largest '
+            f'month-end drawdown of <span class="fig">{num(e["Max drawdown (monthly)"])[0]}</span>. The S&amp;P 500 fell '
             f'<span class="fig">{num(sp_dd)[0]}</span>.',
-            'the catch: after a crash exposure is low, right when markets bounce back. so it misses part of the rebound.']
+            'The cost: after a crash exposure is low, just when markets bounce back, so the sleeve misses part of the rebound.']
 
 
 def thesis_spread():
     p, sl, corr, _ = sleeve_facts()
     s = sl['Pair only (+ T-bills)']
-    return ['utilities, consumer staples and health care sell things people buy in good times and bad: power, food, '
-            'medicine. so these sectors react little to the market, and they tend to move together.',
-            f'sometimes one runs ahead of the other for a few weeks for no lasting reason. we measure the gap as a z-score: how '
-            f'far the price ratio is from its 60-day average, in standard deviations. past {p.z_in:g} we buy the one that fell '
-            f'behind and short the one that ran ahead. once the gap is back under {p.z_out:g}, we close both.',
-            f'one leg is long, one is short, so the direction of the market mostly cancels out. beta of this sleeve: '
-            f'<span class="fig">{num(s["Beta"], "x")[0]}</span>. return on its own: '
-            f'<span class="fig">{num(s["Ann. avg return"])[0]}</span> a year. '
-            f'correlation with the equity sleeve: <span class="fig">{num(corr, "x")[0]}</span>.']
+    return ['Utilities, consumer staples and health care sell things people buy in good times and bad: power, food and '
+            'medicine. These sectors react little to the market, and they tend to move together.',
+            f'Sometimes one runs ahead of the other for a few weeks for no lasting reason. We measure the gap as a z-score, '
+            f'which says how far the price ratio is from its 60-day average in standard deviations. Beyond {p.z_in:g} we buy the '
+            f'sector that fell behind and short the one that ran ahead. Once the gap is back under {p.z_out:g}, we close both.',
+            f'One leg is long and one is short, so the direction of the market mostly cancels out. The beta of this sleeve is '
+            f'<span class="fig">{num(s["Beta"], "x")[0]}</span>, its return on its own '
+            f'<span class="fig">{num(s["Ann. avg return"])[0]}</span> a year, and its correlation with the equity sleeve '
+            f'<span class="fig">{num(corr, "x")[0]}</span>.']
+
+
+def term_sheet():
+    """the strategy as a pension consultant would read it: one row per question"""
+    res = get_results(CODE, **asdict(DEFAULTS))
+    d = DEFAULTS
+    rows = [
+        ('Objective', 'Equity-like long-run growth with much smaller drawdowns than the S&amp;P 500, for the '
+                      'return-seeking part of a pension scheme.'),
+        ('Comparator', 'S&amp;P 500 total return index.'),
+        ('Risk budget', f'{d.target_vol:.0%} annualised volatility for the whole portfolio.'),
+        ('Instruments', 'SPY and the nine original Select Sector SPDR ETFs. Uninvested cash earns the 3-month T-bill rate.'),
+        ('Exposure', f'Equity up to {d.max_lev:.1f}x at each monthly reset. Gross exposure including the sector spread '
+                     f'reached {res["bt"].gross_exposure.max():.1f}x in the backtest.'),
+        ('Implementation', 'Needs short selling and leverage. EU schemes may borrow only temporarily for liquidity '
+                           '(IORP II, Art. 19), so they would hold the strategy through an investment fund or use futures '
+                           'and swaps instead of borrowed cash.'),
+        ('Liquidity', 'All positions are daily-liquid ETFs. Equity is rebalanced monthly; the spread trades on its signal.'),
+        ('Currency', 'US dollars, not hedged.'),
+        ('Costs assumed', f'{d.cost * 1e4:.0f} bp per unit traded, T-bill rate plus {d.fin_spread * 1e4:.0f} bp on borrowed '
+                          f'cash, {d.short_fee * 1e4:.0f} bp a year to borrow the short leg.'),
+        ('Track record', 'Backtest from January 2006 to December 2025. The rules were then frozen and have run live since '
+                         '1 January 2026.')]
+    html('<table class="plain terms">' + ''.join(f'<tr><td class="label">{k}</td><td>{v}</td></tr>' for k, v in rows) + '</table>')
 
 
 def thesis():
-    heading('thesis')
-    html('<p>two return streams, built to be uncorrelated, sharing one 15% risk budget:</p>')
-    clickable('thesis', [('volatility-targeted equity.', 'we hold the s&p 500 and scale exposure with realized volatility: more in '
-            'calm markets, less in stressed ones. it gets whatever risk budget the spread sleeve does not use.', thesis_equity),
-           ('defensive sector spread.', 'a beta-neutral relative-value position between the two most defensive us '
-            'equity sectors, which trades the mean reversion of temporary dislocations.', thesis_spread)])
-    html('<p>the two sleeves earn their returns from different sources, so the combined portfolio has outperformed '
-         'either one on its own, with lower volatility and drawdowns than the s&amp;p 500.</p>')
+    heading('Investment approach')
+    html('<p>The portfolio has two parts that share one 15% volatility budget.</p>')
+    clickable('thesis', [('Volatility-targeted equity.', 'We hold the S&P 500 and scale exposure with realised volatility: more '
+                          'in calm markets, less in stressed ones. This sleeve gets whatever risk budget the spread sleeve '
+                          'does not use.', thesis_equity),
+                         ('Defensive sector spread.', 'A beta-neutral position between the two most defensive US equity '
+                          'sectors, which trades the reversal of temporary gaps between them.', thesis_spread)])
+    html('<p>The two sleeves earn their returns from different sources. In the backtest the combined portfolio did better '
+         'than either sleeve on its own, with lower volatility and much smaller drawdowns than the S&amp;P 500.</p>')
+    html('<h4>For pension schemes</h4>')
+    term_sheet()
 
 
 KNOBS = [  # params field, label, min, max, step, shown as field x scale, format
-    ('target_vol', 'volatility target (% p.a.)', 5.0, 30.0, 0.5, 100, '%.1f'),
-    ('max_lev', 'max equity exposure (x)', 1.0, 3.0, 0.05, 1, '%.2f'),
-    ('pair_size', 'spread size per leg, avg (x)', 0.25, 2.0, 0.05, 1, '%.2f'),
-    ('z_in', 'spread entry threshold (|z|)', 1.0, 4.0, 0.1, 1, '%.1f'),
-    ('cost', 'trading cost (bp per unit traded)', 0.0, 100.0, 1.0, 1e4, '%.0f'),
-    ('fin_spread', 'financing spread over t-bills (bp p.a.)', 0.0, 500.0, 5.0, 1e4, '%.0f'),
-    ('short_fee', 'borrow fee on shorts (bp p.a.)', 0.0, 500.0, 5.0, 1e4, '%.0f')]
+    ('target_vol', 'Volatility target (% a year)', 5.0, 30.0, 0.5, 100, '%.1f'),
+    ('max_lev', 'Maximum equity exposure (x)', 1.0, 3.0, 0.05, 1, '%.2f'),
+    ('pair_size', 'Spread size per leg, average (x)', 0.25, 2.0, 0.05, 1, '%.2f'),
+    ('z_in', 'Spread entry threshold (|z|)', 1.0, 4.0, 0.1, 1, '%.1f'),
+    ('cost', 'Trading cost (bp per unit traded)', 0.0, 100.0, 1.0, 1e4, '%.0f'),
+    ('fin_spread', 'Financing spread over T-bills (bp a year)', 0.0, 500.0, 5.0, 1e4, '%.0f'),
+    ('short_fee', 'Borrow fee on shorts (bp a year)', 0.0, 500.0, 5.0, 1e4, '%.0f')]
 
 
 def sync(src, dst):
@@ -542,266 +580,213 @@ def apply_knobs():
     ss['params'] = Params(start=f'{y0}-01-01', end=f'{y1}-12-31', **v)
 
 
-RISK_GROUPS = [  # title, hint, rows: (label, table, row, format, sign)
-    ('a bad month', 'one-month loss, shorter is better', [
-        ('value at risk 95%', 'risk', 'VaR 95%, historical', 'pct', 1), ('expected shortfall 95%', 'risk', 'CVaR 95% (expected shortfall)', 'pct', 1),
-        ('worst month', 'risk', 'Worst month', 'pct', -1)]),
-    ('reward per unit of risk', 'longer is better', [
-        ('sharpe ratio', 'table', 'Sharpe ratio', 'x', 1), ('sortino ratio', 'risk', 'Sortino ratio', 'x', 1),
-        ('calmar ratio', 'risk', 'Calmar ratio', 'x', 1)]),
-    ('up and down markets', 'share of the s&amp;p&rsquo;s average month we went along with', [
-        ('in up months', 'risk', 'Upside capture', 'pct', 1), ('in down months', 'risk', 'Downside capture', 'pct', 1)])]
+def daily_dd(r):
+    w = wealth(r)
+    return (w / w.cummax() - 1).min()
 
 
-def risk_profile(table, risk):
-    """the risk numbers as paired bars, portfolio vs s&p; the full table sits in an expander"""
-    html('<h4>risk profile</h4>')
-    html(f'<p class="chart-head"><b>monthly returns, net of costs</b><span><i style="background:{S1}"></i>portfolio (net)</span>'
-         f'<span><i style="background:#c9ccd0"></i>s&amp;p 500 tr</span></p>')
-    out = ''
-    for title, hint, rows in RISK_GROUPS:
-        vals = [[sign * {'risk': risk, 'table': table}[t].loc[k, c] for c in ('Strategy (net)', 'S&P 500 TR')]
-                for _, t, k, _, sign in rows]
-        top = max(max(v) for v in vals)
-        out += f'<div class="rg"><p class="rt">{title} <span>{hint}</span></p>'
-        for (label, _, _, kind, _), (p, s) in zip(rows, vals):
-            bar = lambda v, cls: (f'<div class="rb {cls}"><i style="width:calc((100% - 70px) * {max(v, 0) / top:.3f})"></i>'
-                                  f'<em>{num(v, kind)[0]}</em></div>')
-            out += f'<div class="rr"><span class="rl">{label}</span><div>{bar(p, "p")}{bar(s, "s")}</div></div>'
-        out += '</div>'
-    html(out)
-    with st.expander('all risk numbers'):
-        note('monthly returns. value at risk and expected shortfall are one-month losses. cornish-fisher adjusts the normal '
-             'quantile for skew and fat tails. capture: our average return in the s&amp;p&rsquo;s up (down) months, relative to the s&amp;p.')
-        metrics_table(risk[['Strategy (net)', 'S&P 500 TR']].rename(
-            columns={'Strategy (net)': 'portfolio (net)', 'S&P 500 TR': 's&amp;p 500 tr'}), 'portfolio (net)')
-
-
-def var_section(r, b):
-    """value at risk and expected shortfall at a chosen confidence level, with the return distribution"""
-    html('<h4>value at risk</h4>')
-    lvl = st.slider('confidence level', 90.0, 99.5, 95.0, 0.5, format='%.1f%%', key='var_level') / 100
-    v = pd.DataFrame({'portfolio (net)': var_es(r, lvl), 's&amp;p 500 tr': var_es(b, lvl)})
-    p, s = v['portfolio (net)'], v['s&amp;p 500 tr']
-    html(f'<p class="lede">in 1 month out of {1 / (1 - lvl):.0f}, the portfolio lost more than <strong>{num(p.iloc[0])[0]}</strong> '
-         f'(s&amp;p 500: <strong>{num(s.iloc[0])[0]}</strong>). in those months the average loss was '
-         f'<strong>{num(p.iloc[3])[0]}</strong> (s&amp;p 500: <strong>{num(s.iloc[3])[0]}</strong>).</p>')
-    rows = ''.join(f'<tr><td class="label">{i.lower()}</td>{td(x, cls="em")}{td(y)}</tr>' for i, x, y in zip(v.index, p, s))
-    html(f'<table class="plain"><tr><th>one-month loss at {lvl:.1%}</th><th>portfolio (net)</th><th>s&amp;p 500 tr</th></tr>'
-         f'{rows}</table>')
-    period = f'{r.index[0]:%Y}–{r.index[-1]:%Y}'
-    note(f'historical: the loss exceeded in {1 - lvl:.1%} of the months {period}. normal: assumes a bell curve. cornish-fisher: bell curve '
-         f'corrected for skew and fat tails. expected shortfall: average loss in the months beyond the historical var. '
-         f'{(r <= -p.iloc[0]).sum()} of {len(r)} months are in the tail, so far-out levels rest on very few months.')
-    html(f'<p class="chart-head"><b>monthly returns, {period}</b><span><i style="background:{S1}"></i>portfolio (net)</span>'
-         f'<span><i style="background:{S2}"></i>s&amp;p 500 tr</span></p>')
-    fig, ax = plt.subplots(figsize=(8, 2.9))
-    lo, hi = min(r.min(), b.min()), max(r.max(), b.max())
-    bins = np.arange(np.floor(lo * 100) - 1, np.ceil(hi * 100) + 2) / 100
-    ax.hist(b, bins=bins, histtype='step', color=S2, lw=1.2)
-    ax.hist(r, bins=bins, color=S1, alpha=.85, rwidth=.85)
-    for x, c in ((p, S1), (s, S2)):
-        ax.axvline(-x.iloc[0], color=c, lw=1.3)                               # value at risk
-        ax.axvline(-x.iloc[3], color=c, lw=1.3, ls='--')                      # expected shortfall
-    ax.axvspan(lo - .01, -p.iloc[0], color=S1, alpha=.06, lw=0)
-    ax.set_xlim(lo - .01, hi + .01)
-    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.0%}'.replace('-', '−')))
-    ax.set_ylabel('months', color=MUTED)
-    show(fig)
-    note('solid line: value at risk (historical). dashed: expected shortfall. shaded: the portfolio&rsquo;s tail.')
+def with_daily_dd(table, bt, bench):
+    """add the daily max drawdown under the month-end one: the drawdown chart is daily, so both belong in the table"""
+    t = table.copy()
+    t.loc['Max drawdown (daily)'] = [daily_dd(bt.net), daily_dd(bench)]
+    return t
 
 
 def performance():
-    heading('performance')
+    heading('Performance')
     ss = st.session_state
-    if 's_target_vol' not in ss:                                   # widget state is dropped when the page is left
-        load_knobs(ss.get('params', DEFAULTS))
-    with st.container(key='knobs'):
-        for pair in (KNOBS[i:i + 2] for i in range(0, len(KNOBS), 2)):
-            for col, (f, label, lo, hi, step, _, fmt) in zip(st.columns(2, gap='large'), pair):
-                a, b = col.columns([3, 1.2], vertical_alignment='bottom')
-                a.slider(label, lo, hi, step=step, format=fmt, key=f's_{f}', on_change=sync, args=(f's_{f}', f'n_{f}'))
-                b.number_input(label, lo, hi, step=step, format=fmt, key=f'n_{f}', label_visibility='collapsed',
-                               on_change=sync, args=(f'n_{f}', f's_{f}'))
-        st.slider('years', 2006, 2025, key='years')
-        b = st.columns([4, 2, 1], vertical_alignment='center')
-        b[0].checkbox('include sector spread', key='pair_on')
-        b[1].button('reset to notebook defaults', type='tertiary', on_click=load_knobs, args=(DEFAULTS, True))
-        b[2].button('run', type='primary', on_click=apply_knobs)
-    if ss.pop('bad_years', False):
-        note('end year must be after start year.')
     p, res = results()
-    note('notebook defaults: matches the prospectus.' if p == DEFAULTS else
-         'modified assumptions: differs from the prospectus. all pages use these settings.')
-
+    if p != DEFAULTS:
+        note('Custom assumptions: these figures differ from the base case, and every page now uses them.')
     bt, bench = res['bt'], res['bench_d']
     w_s, w_b = wealth(bt.net), wealth(bench)
     replay(res, p, DEFAULTS)                                       # lede + growth of $1 with year-by-year replay
-    metrics_table(res['table'].rename(columns={'Strategy (net)': 'portfolio (net)', 'S&P 500 TR': 's&amp;p 500 tr'}),
-                  'portfolio (net)')
-    chart('drawdown', [('portfolio (net)', w_s, S1), ('s&amp;p 500 tr', w_b, S2)], kind='drawdown', h=2.2)
-    risk_profile(res['table'], res['risk'])
-    var_section(monthly(bt.net), monthly(bench))
+    metrics_table(with_daily_dd(res['table'], bt, bench).rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP}), PF)
+    chart('Drawdown, daily', [(PF, w_s, S1), (SP, w_b, S2)], kind='drawdown', h=2.2)
     rf_d = (get_prices()['^IRX'] / 100 / 252).shift(1).loc[bt.index]
     csv = monthly(pd.DataFrame({'portfolio_net': bt.net, 'portfolio_gross': bt.gross, 'equity_sleeve': res['spy_only'].net,
                                 'spread_sleeve': res['pair_only'].net, 'sp500_tr': bench, 'rf': rf_d}))
-    st.download_button('download monthly returns (csv)', csv.to_csv(index_label='month', float_format='%.6f'),
+    st.download_button('Download monthly returns (CSV)', csv.to_csv(index_label='month', float_format='%.6f'),
                        file_name=f'monthly_returns_{p.start[:4]}_{p.end[:4]}.csv', mime='text/csv', type='tertiary')
+
+    with st.expander('Change the assumptions', expanded=p != DEFAULTS):
+        if 's_target_vol' not in ss:                               # widget state is dropped when the page is left
+            load_knobs(ss.get('params', DEFAULTS))
+        with st.container(key='knobs'):
+            for pair in (KNOBS[i:i + 2] for i in range(0, len(KNOBS), 2)):
+                for col, (f, label, lo, hi, step, _, fmt) in zip(st.columns(2, gap='large'), pair):
+                    a, b = col.columns([3, 1.2], vertical_alignment='bottom')
+                    a.slider(label, lo, hi, step=step, format=fmt, key=f's_{f}', on_change=sync, args=(f's_{f}', f'n_{f}'))
+                    b.number_input(label, lo, hi, step=step, format=fmt, key=f'n_{f}', label_visibility='collapsed',
+                                   on_change=sync, args=(f'n_{f}', f's_{f}'))
+            st.slider('Years', 2006, 2025, key='years')
+            b = st.columns([4, 2, 1], vertical_alignment='center')
+            b[0].checkbox('Include the sector spread', key='pair_on')
+            b[1].button('Reset to the base case', type='tertiary', on_click=load_knobs, args=(DEFAULTS, True))
+            b[2].button('Run', type='primary', on_click=apply_knobs)
+        if ss.pop('bad_years', False):
+            note('The end year must be after the start year.')
 
 
 def annual_returns():
-    heading('annual returns')
+    heading('Annual returns')
     p, res = results()
     yr = res['yearly']
     cagr = lambda r: (1 + r).prod() ** (1 / len(yr)) - 1
-    rows = ''.join(f'<tr><td>{y}</td>{td(r.Strategy, cls="em")}{td(r["S&P 500 TR"])}<td class="dim">{r["Pair held"].lower()}</td></tr>'
+    rows = ''.join(f'<tr><td>{y}</td>{td(r.Strategy, cls="em")}{td(r["S&P 500 TR"])}<td class="dim">{r["Pair held"]}</td></tr>'
                    for y, r in yr.iterrows())
-    html(f'<table class="plain compact"><tr><th>year</th><th>portfolio</th><th>s&amp;p 500 tr</th><th>spread pair</th></tr>{rows}'
-         f'<tr class="total first"><td>cagr</td>{td(cagr(yr.Strategy))}{td(cagr(yr["S&P 500 TR"]))}<td></td></tr>'
-         f'<tr class="total"><td>cumulative</td>{td((1 + yr.Strategy).prod() - 1)}{td((1 + yr["S&P 500 TR"]).prod() - 1)}<td></td></tr></table>')
+    html(f'<table class="plain compact"><tr><th>Year</th><th>Portfolio</th><th>{SP}</th><th>Spread pair</th></tr>{rows}'
+         f'<tr class="total first"><td>Compound annual growth (CAGR)</td>{td(cagr(yr.Strategy))}{td(cagr(yr["S&P 500 TR"]))}<td></td></tr>'
+         f'<tr class="total"><td>Cumulative</td>{td((1 + yr.Strategy).prod() - 1)}{td((1 + yr["S&P 500 TR"]).prod() - 1)}<td></td></tr></table>')
+    note('Compound growth is lower than the arithmetic average return on the Performance page, because losses and gains '
+         'compound unevenly.')
 
 
 def stress_tests():
-    heading('stress tests')
+    heading('Stress tests')
     p, res = results()
     bt, bench = res['bt'], res['bench_d']
-    note('s&amp;p 500 peak-to-trough episodes, total return over each window. click an episode for the deep dive.')
+    note('The five S&amp;P 500 peak-to-trough episodes since 2007. Each figure is the total return over the S&amp;P 500&rsquo;s '
+         'own window, which is not the same as each line&rsquo;s drawdown. Click an episode for what happened.')
     cut = lambda r, a, b: r.loc[a:b].iloc[1:]
-    span = lambda a, b: f'{pd.Timestamp(a):%b %Y} &rarr; {pd.Timestamp(b):%b %Y}'.lower()
+    span = lambda a, b: f'{pd.Timestamp(a):%b %Y} &rarr; {pd.Timestamp(b):%b %Y}'
     eps = [e for e in CRISES if pd.Timestamp(e[1]) >= bt.index[0] and pd.Timestamp(e[2]) <= bt.index[-1]]
     if not eps:
-        note('no episode falls inside the selected years.')
+        note('No episode falls inside the selected years.')
         return
-    streams = [('s&amp;p 500 tr', bench), ('portfolio', bt.net), ('equity sleeve', res['spy_only'].net),
-               ('spread sleeve', res['pair_only'].net)]
+    streams = [(SP, bench), ('Portfolio', bt.net), ('Equity sleeve', res['spy_only'].net), ('Spread sleeve', res['pair_only'].net)]
     cell = lambda col, v, cls='': col.markdown(f'<p class="c {cls} {num(v)[1]}">{num(v)[0]}</p>', unsafe_allow_html=True)
     W = [3, 2.2, 1.3, 1.3, 1.3, 1.3]
     with st.container(key='stress'):
-        for col, t in zip(st.columns(W), ['episode', 'window'] + [n for n, _ in streams]):
-            col.markdown(f'<p class="th {"l" if t == "episode" else "wh" if t == "window" else ""}">{t}</p>', unsafe_allow_html=True)
+        for col, t in zip(st.columns(W), ['Episode', 'Window'] + [n for n, _ in streams]):
+            col.markdown(f'<p class="th {"l" if t == "Episode" else "wh" if t == "Window" else ""}">{t}</p>', unsafe_allow_html=True)
         for k, (name, a, b, story, lesson) in enumerate(eps):
             c = st.columns(W, vertical_alignment='center')
             clicked = c[0].button(name, key=f'ep{k}', type='tertiary')
             c[0].markdown(f'<p class="win">{span(a, b)}</p>', unsafe_allow_html=True)
             c[1].markdown(f'<p class="dim">{span(a, b)}</p>', unsafe_allow_html=True)
             for col, (n, r) in zip(c[2:], streams):
-                cell(col, (1 + cut(r, a, b)).prod() - 1, 'em' if n == 'portfolio' else '')
+                cell(col, (1 + cut(r, a, b)).prod() - 1, 'em' if n == 'Portfolio' else '')
             if clicked:
                 def body(a=a, b=b, story=story, lesson=lesson):
                     note(span(a, b))
                     w = bt.w_spy
-                    pos = (f' spread pair: {res["yearly"].loc[int(a[:4]), "Pair held"].lower()}, open on '
+                    pos = (f' Spread pair: {res["yearly"].loc[int(a[:4]), "Pair held"]}, open on '
                            f'{(res["pair_only"].gross_exposure.loc[a:b] > 0).mean():.0%} of days.' if p.pair_size > 0 else '')
-                    html(f'<p>{story}</p><p>{lesson} equity exposure going in: <span class="fig">{w.loc[:a].iloc[-1]:.2f}x</span>, '
-                         f'average during the episode: <span class="fig">{w.loc[a:b].mean():.2f}x</span>.{pos}</p>')
+                    html(f'<p>{story}</p><p>{lesson} Equity exposure going in was <span class="fig">{w.loc[:a].iloc[-1]:.2f}x</span>, '
+                         f'and <span class="fig">{w.loc[a:b].mean():.2f}x</span> on average during the episode.{pos}</p>')
                     html('<table class="plain"><tr>' + ''.join(f'<th>{n}</th>' for n, _ in streams) + '</tr><tr>'
                          + ''.join(td((1 + cut(r, a, b)).prod() - 1) for _, r in streams) + '</tr></table>')
-                    chart('growth of $1 over the episode', [('portfolio (net)', wealth(cut(bt.net, a, b)), S1),
-                                                            ('s&amp;p 500 tr', wealth(cut(bench, a, b)), S2)], kind='line')
+                    chart('Growth of $1 over the episode', [(PF, wealth(cut(bt.net, a, b)), S1),
+                                                            (SP, wealth(cut(bench, a, b)), S2)], kind='line')
                 dive(name, body)
 
 
 def attribution():
-    heading('attribution')
+    heading('Attribution')
     p, res = results()
-    note('each sleeve run in isolation, idle capital in t-bills.')
-    metrics_table(res['sleeves'].rename(columns={'Vol-managed SPY only': 'equity sleeve', 'Pair only (+ T-bills)': 'spread sleeve',
-                                                 'Combined strategy': 'combined'}), 'combined')
-    chart('growth of $1, log scale', [('combined', wealth(res['bt'].net), S1), ('equity sleeve', wealth(res['spy_only'].net), S2),
-                                      ('spread sleeve', wealth(res['pair_only'].net), S3)])
-    pair = (f'spread pair for {res["pair_year"]}: <span class="fig">{"/".join(res["pair_now"]).lower()}</span>'
-            if res['pair_now'] else 'spread sleeve off')
-    html(f'<p>positioning at the {res["bt"].index[-1]:%d %b %Y} close: equity exposure '
-         f'<span class="fig">{res["exposure_now"]:.2f}x</span>, {pair}.</p>')
+    note('Each sleeve run on its own, with idle capital in T-bills.')
+    metrics_table(res['sleeves'].rename(columns={'Vol-managed SPY only': 'Equity sleeve', 'Pair only (+ T-bills)': 'Spread sleeve',
+                                                 'Combined strategy': 'Combined'}), 'Combined')
+    chart('Growth of $1, log scale', [('Combined', wealth(res['bt'].net), S1), ('Equity sleeve', wealth(res['spy_only'].net), S2),
+                                      ('Spread sleeve', wealth(res['pair_only'].net), S3)])
+    pair = (f'the spread pair for {res["pair_year"]} is <span class="fig">{"/".join(res["pair_now"])}</span>'
+            if res['pair_now'] else 'the spread sleeve is off')
+    html(f'<p>At the {res["bt"].index[-1]:%d %b %Y} close, equity exposure is '
+         f'<span class="fig">{res["exposure_now"]:.2f}x</span> and {pair}.</p>')
 
 
 def live_2026():
-    heading('live: 2026')
-    html('<p>the rules were frozen at the 31 dec 2025 close. this page runs them, with notebook defaults, on data the '
-         'strategy was never fitted on: a true out-of-sample check, separate from the prospectus numbers.</p>')
+    heading('Live 2026')
+    html('<p>We fixed the rules at the 31 Dec 2025 close and have not changed them since. This page runs them on 2026 data, '
+         'which played no part in designing the strategy, with the base-case assumptions.</p>')
     try:
         live = get_live()[0]
     except RuntimeError as e:                                   # download failed; real bugs still surface
-        note(str(e).lower())
+        note(str(e))
         return
     lb, lbench = live['bt'], live['bench_d']
-    note(f'1 jan 2026 &rarr; {lb.index[-1]:%d %b %Y}'.lower())
+    note(f'From 1 Jan 2026 to {lb.index[-1]:%d %b %Y}.')
     row = lambda name, r, cls: (f'<tr class="{cls}"><td class="label">{name}</td>{td((1 + r).prod() - 1)}'
-                                f'{td(monthly(r).std() * 12 ** .5)}{td((wealth(r) / wealth(r).cummax() - 1).min())}</tr>')
-    html('<table class="plain"><tr><th></th><th>return</th><th>volatility (ann., monthly)</th><th>max drawdown</th></tr>'
-         + row('portfolio (net)', lb.net, 'em') + row('s&amp;p 500 tr', lbench, '') + '</table>')
-    chart('growth of $1', [('portfolio (net)', wealth(lb.net), S1), ('s&amp;p 500 tr', wealth(lbench), S2)], kind='line')
-    html(f'<p>current positioning: equity exposure <span class="fig">{lb.w_spy.iloc[-1]:.2f}x</span>, spread pair '
-         f'<span class="fig">{"/".join(live["pair_now"]).lower()}</span>.</p>')
+                                f'{td(monthly(r).std() * 12 ** .5)}{td(daily_dd(r))}</tr>')
+    html('<table class="plain"><tr><th></th><th>Return since 1 Jan</th><th>Volatility (annualised, monthly)</th>'
+         '<th>Max drawdown (daily)</th></tr>' + row(PF, lb.net, 'em') + row(SP, lbench, '') + '</table>')
+    chart('Growth of $1 in 2026', [(PF, wealth(lb.net), S1), (SP, wealth(lbench), S2)], kind='line')
+    html(f'<p>Equity exposure today is <span class="fig">{lb.w_spy.iloc[-1]:.2f}x</span>, and the spread pair is '
+         f'<span class="fig">{"/".join(live["pair_now"])}</span>.</p>')
 
 
 def rule_budget():
     p, _ = results()
     left = max(p.target_vol ** 2 - 0.06 ** 2, 0) ** .5
-    return [f'think of {p.target_vol:.0%} volatility as the total risk we are allowed to take. the spread sleeve goes first: we '
-            'measure how much the positions actually held moved over the last 63 trading days. the equity sleeve gets what is left.',
-            f'risks don\'t add up in a straight line, because the two sleeves don\'t move together. if the spread uses 6%, the '
+    return [f'Think of {p.target_vol:.0%} volatility as the total risk we are allowed to take. The spread sleeve goes first: we '
+            'measure how much the positions actually held moved over the last 63 trading days. The equity sleeve gets what is left.',
+            f'Risks don\'t add up in a straight line, because the two sleeves don\'t move together. If the spread uses 6%, the '
             f'equity sleeve still gets &radic;({p.target_vol * 100:g}&sup2; &minus; 6&sup2;) = <span class="fig">{left:.1%}</span>, '
             f'not {p.target_vol - .06:.0%}.']
 
 
 def rule_equity():
     p, _ = results()
-    return ['position = risk budget / how much spy moved lately (annualized).',
-            f'example: budget 13%, spy moving at 20% a year: hold 13 / 20 = 0.65x, the other 0.35 sits in t-bills. spy moving at '
-            f'8%: 1.6x, and the extra 0.6 is borrowed at the t-bill rate plus {p.fin_spread * 1e4:.0f} bp. never more than '
-            f'{p.max_lev:.2f}x.',
-            'we only reset at month-end. in between, the position just moves with the market.']
+    return ['Position = risk budget / how much SPY moved lately (annualised).',
+            f'For example, with a budget of 13% and SPY moving at 20% a year, we hold 13 / 20 = 0.65x and the other 0.35 sits in '
+            f'T-bills. With SPY moving at 8% we would hold 1.6x, and the extra 0.6 is borrowed at the T-bill rate plus '
+            f'{p.fin_spread * 1e4:.0f} bp. Exposure never goes above {p.max_lev:.2f}x.',
+            'We only reset at month-end. In between, the position moves with the market.']
 
 
 def rule_spread():
     p, _ = results()
-    return ['on the last trading day of the year we measure each of the 9 sector etfs against spy over that year and pick the '
-            'two that moved least with the market. that pair is traded all of next year.',
-            'the legs are sized so both carry the same market exposure: the one that moves less with the market gets the bigger weight.',
-            f'example with xlp and xlu: z hits +2.3, so xlp has run ahead of xlu. we short xlp and buy xlu. when z falls back '
-            f'under {p.z_out:g}, we close both.',
-            'when the pair changes at year-end, the old position is closed and the new pair starts flat.']
+    return ['On the last trading day of the year we measure each of the nine sector ETFs against SPY over that year and pick the '
+            'two that moved least with the market. That pair is traded for the whole of the next year.',
+            'The legs are sized so both carry the same market exposure, so the one that moves less with the market gets the '
+            'bigger weight.',
+            f'An example with XLP and XLU: z reaches +2.3, so XLP has run ahead of XLU. We short XLP and buy XLU. When z falls '
+            f'back under {p.z_out:g}, we close both.',
+            'When the pair changes at year-end, the old position is closed and the new pair starts flat.']
 
 
 def rule_execution():
-    return ['every decision uses closing prices up to today. we trade at today\'s close, so a new position earns from tomorrow. '
-            'no peeking at prices we could not have known.',
-            'we checked this by deleting all data after a date and rerunning. everything before that date came out exactly the '
-            'same. the test is in the notebook.']
+    return ['Every decision uses closing prices up to today. We trade at today\'s close, so a new position earns from tomorrow, '
+            'and no decision uses a price we could not have known.',
+            'We checked this by deleting all data after a date and running the backtest again. Everything before that date '
+            'came out exactly the same. The test is in the notebook.']
 
 
 def rule_costs():
     p, res = results()
     bt = res['bt']
     turn = bt.turnover.sum() / (len(bt) / 252)
-    return [f'every trade costs {p.cost * 1e4:.0f} bp of the amount traded: spread, commission, slippage. shorts cost '
-            f'{p.short_fee * 1e4:.0f} bp a year to borrow, borrowed cash costs the t-bill rate plus {p.fin_spread * 1e4:.0f} bp.',
-            'every return on this site is after these costs.',
-            f'we trade about <span class="fig">{turn:.0f}x</span> our capital a year, mostly the spread legs, so costs matter. '
-            'raise the cost slider on the performance page to see how much.']
+    return [f'Every trade costs {p.cost * 1e4:.0f} bp of the amount traded, covering the spread, commission and slippage. '
+            f'Shorts cost {p.short_fee * 1e4:.0f} bp a year to borrow, and borrowed cash costs the T-bill rate plus '
+            f'{p.fin_spread * 1e4:.0f} bp.',
+            'Every return on this site is after these costs.',
+            f'We trade about <span class="fig">{turn:.0f}x</span> our capital a year, mostly in the spread legs, so costs matter. '
+            'Raise the trading cost under "Change the assumptions" on the Performance page to see how much.']
 
 
 def rules():
-    heading('rules')
+    heading('Rules')
     p, _ = results()
-    clickable('rules', [('risk budget.', f'one {p.target_vol:.0%} volatility budget for the whole portfolio. the spread sleeve\'s realized '
-            'volatility (63 trading days) is taken out first; the equity sleeve gets the rest.', rule_budget),
-           ('equity sleeve.', f'at each month-end, exposure = remaining budget / spy realized volatility (21 trading days, '
-            f'annualized), capped at {p.max_lev:.2f}x. idle cash earns the t-bill rate; leverage is financed at t-bill + '
-            f'{p.fin_spread * 1e4:.0f} bp.', rule_equity),
-           ('spread sleeve.', f'at each year-end, select the two lowest-beta sector etfs vs spy (trailing 1y). daily z-score '
-            f'of the log price ratio vs its 60-day mean: enter at |z| > {p.z_in:g} (long cheap, short rich), exit at '
-            f'|z| < {p.z_out:g}. legs are sized beta-neutral from the same prior-year betas, {2 * p.pair_size:.2f}x gross. '
-            'a newly selected pair starts flat.', rule_spread),
-           ('execution.', 'signals use closes up to day t; positions earn from t+1.', rule_execution),
-           ('costs.', f'{p.cost * 1e4:.0f} bp per unit traded, {p.short_fee * 1e4:.0f} bp p.a. borrow fee on shorts.', rule_costs)])
+    clickable('rules', [('Risk budget.', f'One {p.target_vol:.0%} volatility budget for the whole portfolio. The spread sleeve\'s '
+                         'realised volatility over 63 trading days is taken out first, and the equity sleeve gets the rest.', rule_budget),
+                        ('Equity sleeve.', f'At each month-end, exposure = remaining budget / SPY realised volatility over 21 trading '
+                         f'days (annualised), capped at {p.max_lev:.2f}x. Idle cash earns the T-bill rate; leverage is financed at '
+                         f'the T-bill rate plus {p.fin_spread * 1e4:.0f} bp.', rule_equity),
+                        ('Spread sleeve.', f'At each year-end, select the two sector ETFs with the lowest beta to SPY over the past '
+                         f'year. Compute a daily z-score of their log price ratio against its 60-day mean: enter at |z| > {p.z_in:g} '
+                         f'(long the cheap leg, short the rich one) and exit at |z| < {p.z_out:g}. The legs are sized to be '
+                         f'beta-neutral from the same prior-year betas, {2 * p.pair_size:.2f}x gross. A newly selected pair starts '
+                         'flat.', rule_spread),
+                        ('Execution.', 'Signals use closing prices up to day t; positions earn from day t+1.', rule_execution),
+                        ('Costs.', f'{p.cost * 1e4:.0f} bp per unit traded and a {p.short_fee * 1e4:.0f} bp a year borrow fee on '
+                         'shorts.', rule_costs)])
 
 
 def fan_chart(fan):
-    """monte carlo fan: a few single paths, 5-95% and 25-75% bands and the median, s&p median and 5/95% for comparison"""
+    """monte carlo fan: a few single paths, 5-95% and 25-75% bands and the median, S&P median and 5/95% for comparison"""
     html(f'<p class="chart-head"><b>$1 over 10 years, 10,000 simulated paths (log scale)</b>'
-         f'<span><i style="background:{S1}"></i>portfolio (net)</span><span><i style="background:{S2}"></i>s&amp;p 500 tr</span></p>')
+         f'<span><i style="background:{S1}"></i>{PF}</span><span><i style="background:{S2}"></i>{SP}</span></p>')
     q = np.concatenate([np.ones((5, 1, 2)), fan['q']], axis=1)              # every path starts at $1
     t = np.arange(q.shape[1]) / 12
     fig, ax = plt.subplots(figsize=(8, 3.4))
@@ -813,58 +798,72 @@ def fan_chart(fan):
     ax.plot(t, q[2, :, 1], color=S2, lw=1.5)
     for k in (0, 4):
         ax.plot(t, q[k, :, 1], color=S2, lw=1, ls='--')
-    for k, lab in ((0, '5%'), (2, 'median'), (4, '95%')):
+    for k, lab in ((0, '5%'), (2, 'Median'), (4, '95%')):
         ax.annotate(f'{lab} ${q[k, -1, 0]:.2f}', (t[-1], q[k, -1, 0]), xytext=(6, 0), textcoords='offset points',
-                    va='center', fontsize=7.5, color=S1)
+                    va='center', fontsize=8, color=S1)
     ax.set_yscale('log'); ax.yaxis.set_minor_locator(NullLocator())
     ax.set_yticks([t_ for t_ in [0.5, 1, 2, 5, 10, 20] if q.min() / 1.3 <= t_ <= q.max() * 1.3])
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'${v:g}'))
     ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f'{v:.0f}y'))
-    ax.axhline(1, color=INK, lw=.8); ax.set_xlim(0, t[-1] * 1.13)
+    ax.axhline(1, color=INK, lw=.8); ax.set_xlim(0, t[-1] * 1.16)
     show(fig)
-    note('shaded: the middle 50% and 90% of the portfolio&rsquo;s paths, thin lines: single paths, bold: median. '
-         'grey: s&amp;p 500 median, dashed: its 5% and 95% levels.')
+    note('The shaded bands hold the middle 50% and 90% of the portfolio&rsquo;s paths, thin lines are single paths and the '
+         'bold line is the median. Grey: the S&amp;P 500 median, dashed: its 5% and 95% levels.')
 
 
 def risks():
-    heading('risks')
+    heading('Risks')
     p, res = results()
-    mdd = num(res['table'].loc['Max drawdown (monthly)', 'Strategy (net)'])[0]
-    items([(None, 'leverage and shorting required; gross exposure can exceed 4x.'),
-           (None, f'max drawdown {mdd} on monthly data.'),
-           (None, 'selection bias: the low-beta pair rule was formulated after observing defensive-sector pairs; '
-                  'alternative selection rules did not add value.'),
-           (None, 'monthly rebalancing lags sudden volatility spikes; low exposure after crashes misses sharp rebounds.'),
-           (None, 'realized daily volatility can exceed the budget in sudden spikes, because exposure is reset monthly.'),
-           (None, 'yahoo finance data, fixed cost assumptions, no taxes.')], ordered=False)
+    t = with_daily_dd(res['table'], res['bt'], res['bench_d'])
+    mdd_m, mdd_d = (num(t.loc[k, 'Strategy (net)'])[0] for k in ('Max drawdown (monthly)', 'Max drawdown (daily)'))
+    items([(None, f'Leverage and short selling are required. Gross exposure reached {res["bt"].gross_exposure.max():.1f}x in '
+                  'the backtest, and a scheme&rsquo;s rules may not allow this directly (see the term sheet under Investment approach).'),
+           (None, f'The largest fall was {mdd_m} measured at month-ends and {mdd_d} measured daily.'),
+           (None, 'Selection bias: the rule for choosing the pair was written after we had seen defensive-sector pairs work. '
+                  'Other selection rules did not add value.'),
+           (None, 'Exposure is reset once a month, so it reacts late to sudden volatility spikes, and low exposure after a crash '
+                  'misses part of the rebound. For the same reason, realised daily volatility can run above the budget in spikes.'),
+           (None, f'Short positions can be recalled, and the borrow fee is assumed fixed at {p.short_fee * 1e4:.0f} bp a year.'),
+           (None, 'The portfolio is in US dollars and not hedged, which matters for a euro or sterling scheme.'),
+           (None, 'Data from Yahoo Finance, fixed cost assumptions, no taxes and no management fee.')], ordered=False)
+
+    html('<h4>Risk profile</h4>')
+    note('Monthly returns, net of costs. Value at risk and expected shortfall are one-month losses. Cornish-Fisher adjusts the '
+         'normal estimate for skew and fat tails. Capture compares our average return in the S&amp;P 500&rsquo;s rising (falling) '
+         'months with the S&amp;P 500&rsquo;s own.')
+    metrics_table(res['risk'][['Strategy (net)', 'S&P 500 TR']].rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP}), PF)
+
+    if res['mc'] is None:
+        return
     mc, head, fan = res['mc']
-    html('<h4>10-year outlook</h4>')
-    note('monte carlo: 10,000 paths of 10 years, built from random 12-month blocks of the backtest (portfolio, s&amp;p and '
-         't-bills from the same months). it resamples our own history, so it inherits its optimism: a range of outcomes '
-         'if the next decade looks like the backtest, not a forecast.')
+    html('<h4>10-year simulation (resampled backtest)</h4>')
+    html('<p>We built 10,000 ten-year paths from random 12-month blocks of the backtest, taking the portfolio, the S&amp;P 500 '
+         'and T-bills from the same months. Because it resamples our own history, the simulation inherits its optimism. Read it '
+         'as the range of outcomes if the next decade looks like the backtest, not as a forecast.</p>')
+    mc = mc.drop(index='Probability of a loss', errors='ignore')
     kind = lambda i: 'usd' if i.startswith('Wealth') else 'x' if i.startswith('Sharpe') else 'pct'
-    rows = ''.join(f'<tr><td class="label">{i.lower().replace("$1", "$1 invested")}</td>'
+    rows = ''.join(f'<tr><td class="label">{i.replace("$1", "$1 invested")}</td>'
                    + ''.join(td(v, kind(i), 'em' if c == 'Strategy (net)' else '') for c, v in r.items()) + '</tr>'
                    for i, r in mc.iterrows())
-    html(f'<table class="plain"><tr><th></th><th>portfolio (net)</th><th>s&amp;p 500 tr</th></tr>{rows}</table>')
-    note(f'the portfolio ends ahead of the s&amp;p 500 in {head["beats_sp"]:.0%} of paths.')
+    html(f'<table class="plain"><tr><th></th><th>{PF}</th><th>{SP}</th></tr>{rows}</table>')
+    note(f'The portfolio ends ahead of the S&amp;P 500 in {head["beats_sp"]:.0%} of paths.')
     fan_chart(fan)
 
 
 def photo(ph):
     if ph.startswith('assets/'):                                   # local file, inlined: the team iframe cannot load app files
         return f'data:image/jpeg;base64,{base64.b64encode((Path(__file__).parent / ph).read_bytes()).decode()}'
-    return ph if ph.startswith('http') else UNSPLASH.format(ph)
+    return ph
 
 
 def team():
     """wheel picker: spin the names, the one in the middle shows its photo and bio"""
-    heading('team')
+    heading('Team')
     people = json.dumps([dict(n=n, t=t, b=b, i=''.join(w[0] for w in n.split()),
                               u=photo(ph), li=li) for n, t, ph, b, li in TEAM])
     components.html("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
 * { box-sizing: border-box; margin: 0; }
 body { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #101924; background: #fff; }
 .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 48px; align-items: center; }
@@ -881,7 +880,7 @@ body { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #101924; back
 .card { transition: opacity .25s; }
 .card.out { opacity: 0; }
 .ph { position: relative; overflow: hidden; width: 180px; aspect-ratio: 4/5; background: #f5f5f5; border: 1px solid #d7d7d7; display: grid; place-items: center;
-  font-family: "IBM Plex Mono", monospace; font-size: 18px; letter-spacing: .08em; color: #555b63; margin-bottom: 16px; }
+  font-size: 18px; color: #555b63; margin-bottom: 16px; }
 .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
 .hd { display: flex; align-items: center; gap: 8px; }
 .name { font-family: "Newsreader", Georgia, serif; font-size: 28px; line-height: 1.2; }
@@ -932,61 +931,58 @@ w.addEventListener('scroll', () => requestAnimationFrame(paint), { passive: true
 items.forEach(el => el.addEventListener('click', () =>
   w.scrollTo({ top: el.offsetTop + el.offsetHeight / 2 - w.clientHeight / 2, behavior: 'smooth' })));
 const fit = () => { frameElement.style.height = document.body.scrollHeight + 'px'; paint(); };
-addEventListener('resize', fit); fit();
+addEventListener('resize', fit);
+const mid = items[Math.floor(items.length / 2) - 1];               // start in the middle: names above and below
+w.scrollTop = mid.offsetTop + mid.offsetHeight / 2 - w.clientHeight / 2; fit();
 </script>""".replace('PEOPLE', people), height=440)
 
 
 def save_settings():
     ss = st.session_state
-    ss['inv_dep'], ss['inv_tv'], ss['inv_view'] = ss['f_dep'], ss['f_tv'] / 100, 'account'
+    ss['mr_size'], ss['mr_tv'], ss['mr_view'] = ss['f_size'] * 1e6, ss['f_tv'] / 100, 'Report'
 
 
-def investor():
-    heading('investor login')
-    if not st.session_state.get('investor'):
-        note('draft: accounts are not connected yet. any details open a demo account.')
-        with st.form('login'):
-            st.text_input('email')
-            st.text_input('password', type='password')
-            if st.form_submit_button('log in', type='primary'):
-                st.session_state['investor'] = True
-                st.rerun()
-        return
+def mandate_report():
+    heading('Sample mandate report')
+    note('Illustrative only: a simulated pension mandate, no capital is invested. The rules were frozen at the 31 Dec 2025 close.')
     ss = st.session_state
-    dep, tv = ss.get('inv_dep', DEMO_DEPOSIT), ss.get('inv_tv', DEFAULTS.target_vol)
-    a, b = st.columns([4, 1], vertical_alignment='center')
-    ss.setdefault('inv_view', 'account')                           # state, not default=: save_settings also sets it
-    view = a.segmented_control('view', ['account', 'settings'], key='inv_view', label_visibility='collapsed',
-                               on_change=lambda: ss.update(inv_view=ss['inv_view'] or 'account'))   # no empty selection
-    if b.button('log out', key='inv_logout', type='tertiary'):
-        ss['investor'] = False
-        st.rerun()
-    if view == 'settings':
-        with st.form('inv_settings'):
-            st.number_input('deposit at the 31 dec 2025 close ($)', 100.0, 10_000_000.0, dep, 100.0, format='%.0f', key='f_dep')
-            st.select_slider('risk budget: volatility target (% p.a.)', list(range(5, 31)), round(tv * 100), key='f_tv')
-            note('the whole account is recalculated from 1 jan 2026 with these settings.')
-            st.form_submit_button('save', type='primary', on_click=save_settings)
+    size, tv = ss.get('mr_size', MANDATE), ss.get('mr_tv', DEFAULTS.target_vol)
+    ss.setdefault('mr_view', 'Report')                             # state, not default=: save_settings also sets it
+    view = st.segmented_control('view', ['Report', 'Settings'], key='mr_view', label_visibility='collapsed',
+                                on_change=lambda: ss.update(mr_view=ss['mr_view'] or 'Report'))   # no empty selection
+    if view == 'Settings':
+        with st.form('mr_settings'):
+            st.number_input('Mandate size at the 31 Dec 2025 close ($m)', 1.0, 10_000.0, size / 1e6, 10.0, format='%.0f', key='f_size')
+            st.select_slider('Risk budget: volatility target (% a year)', list(range(5, 31)), round(tv * 100), key='f_tv')
+            note('The whole report is recalculated from 1 Jan 2026 with these settings.')
+            st.form_submit_button('Save', type='primary', on_click=save_settings)
         return
     try:
         live, px = get_live(tv)
     except RuntimeError as e:                                   # download failed; real bugs still surface
-        note(str(e).lower())
+        note(str(e))
         return
     lb, lbench = live['bt'], live['bench_d']
-    value = dep * (1 + lb.net).cumprod()
-    bench_value = dep * (1 + lbench).cumprod()
-    profit = value.iloc[-1] - dep
+    value = size * (1 + lb.net).cumprod()
+    bench_value = size * (1 + lbench).cumprod()
+    gain = value.iloc[-1] - size
     signed = lambda v, kind: ('+' if v >= 0 else '') + num(v, kind)[0]
-    neg = num(profit)[1]
-    html(f'<div class="hero"><p class="k">balance &middot; as of the {lb.index[-1]:%d %b %Y} close</p>'.lower()
-         + f'<p class="big">{num(value.iloc[-1], "usd")[0]}</p>'
-         f'<p class="chg"><span class="{neg}">{signed(profit, "usd")} &nbsp;{signed(value.iloc[-1] / dep - 1, "pct")}</span>'
-         f'<span class="dim"> since your ${dep:,.0f} deposit &middot; the s&amp;p 500 tr would be at '
-         f'{num(bench_value.iloc[-1], "usd")[0]} ({signed(bench_value.iloc[-1] / dep - 1, "pct")}) &middot; '
-         f'{tv:.0%} risk budget</span></p></div>')
-    chart('account value', [('portfolio (net)', pd.concat([pd.Series(dep, index=[pd.Timestamp('2025-12-31')]), value]), S1),
-                            ('s&amp;p 500 tr', pd.concat([pd.Series(dep, index=[pd.Timestamp('2025-12-31')]), bench_value]), S2)],
+    html(f'<div class="hero"><p class="k">Mandate value at the {lb.index[-1]:%d %b %Y} close</p>'
+         f'<p class="big">${value.iloc[-1] / 1e6:,.1f}m</p>'
+         f'<p class="chg"><span class="{num(gain)[1]}">{signed(gain, "m")} &nbsp;{signed(value.iloc[-1] / size - 1, "pct")}</span>'
+         f'<span class="dim"> since 31 Dec 2025 &middot; S&amp;P 500 TR {signed(bench_value.iloc[-1] / size - 1, "pct")} '
+         f'&middot; {tv:.0%} risk budget</span></p></div>')
+
+    html('<h4>Risk against limits</h4>')
+    lim = [('Realised volatility since 1 Jan (annualised, monthly)', num(monthly(lb.net).std() * 12 ** .5)[0], f'{tv:.0%} budget'),
+           ('Equity exposure today', f'{lb.w_spy.iloc[-1]:.2f}x', f'{DEFAULTS.max_lev:.2f}x cap'),
+           ('Gross exposure today', f'{lb.gross_exposure.iloc[-1]:.2f}x', ''),
+           ('Max drawdown since 1 Jan (daily)', num(daily_dd(lb.net))[0], '')]
+    html('<table class="plain"><tr><th></th><th>Current</th><th>Limit</th></tr>'
+         + ''.join(f'<tr><td class="label">{k}</td><td class="em">{v}</td><td class="dim">{l}</td></tr>' for k, v, l in lim)
+         + '</table>')
+    start = pd.Series(size / 1e6, index=[pd.Timestamp('2025-12-31')])
+    chart('Mandate value ($m)', [(PF, pd.concat([start, value / 1e6]), S1), (SP, pd.concat([start, bench_value / 1e6]), S2)],
           kind='line')
 
     p0 = Params(start=DEMO_START, end=str(lb.index[-1].date()), target_vol=tv)
@@ -995,42 +991,41 @@ def investor():
     legs, zt = tgt.iloc[-1][[a, b]] * p0.pair_size, z.iloc[-1]
     if legs.abs().sum() > 0:
         lng, sht = legs.idxmax(), legs.idxmin()
-        status = (f'<b>spread open</b> &middot; long {lng.lower()} {legs[lng]:.2f}x, short {sht.lower()} {-legs[sht]:.2f}x '
+        status = (f'<b>Spread open</b> &middot; long {lng} {legs[lng]:.2f}x, short {sht} {-legs[sht]:.2f}x '
                   f'&middot; z-score {num(zt, "x")[0]} &middot; closes when |z| &lt; {p0.z_out:g}')
     else:
-        status = (f'<b>spread flat</b> &middot; {a.lower()}/{b.lower()} &middot; z-score {num(zt, "x")[0]} '
-                  f'&middot; opens when |z| &gt; {p0.z_in:g}')
-    html('<h4>sector spread</h4>')
+        status = f'<b>Spread flat</b> &middot; {a}/{b} &middot; z-score {num(zt, "x")[0]} &middot; opens when |z| &gt; {p0.z_in:g}'
+    html('<h4>Sector spread</h4>')
     html(f'<p class="status {"on" if legs.abs().sum() > 0 else ""}"><i></i>{status}</p>')
-    chart(f'z-score, log {a.lower()}/{b.lower()}', [('z-score', z.loc[DEMO_START:], S1)], kind='z', h=2.2,
+    chart(f'Z-score of log {a}/{b}', [('z-score', z.loc[DEMO_START:], S1)], kind='z', h=2.2,
           bands=((p0.z_in, '--'), (p0.z_out, ':')))
-    note(f'dashed: entry at |z| &gt; {p0.z_in:g} (short the rich leg, buy the cheap one). dotted: exit at |z| &lt; {p0.z_out:g}.')
+    note(f'Dashed lines: entry at |z| &gt; {p0.z_in:g}, short the rich leg and buy the cheap one. Dotted lines: exit at '
+         f'|z| &lt; {p0.z_out:g}.')
 
     W = lb[[f'w_{a}' for a in ASSETS]].set_axis(ASSETS, axis=1)
-    html('<h4>positions</h4>')
+    html('<h4>Positions</h4>')
     eq = value.iloc[-1]
     pos = W.iloc[-1]
-    rows = ''.join(f'<tr><td class="label">{a.lower()}</td>{td(w, "x")}{td(w * eq, "usd")}</tr>' for a, w in pos.items() if abs(w) > 1e-9)
+    rows = ''.join(f'<tr><td class="label">{a}</td>{td(w, "x")}{td(w * eq, "m")}</tr>' for a, w in pos.items() if abs(w) > 1e-9)
     cash = 1 - pos.sum()
-    rows += f'<tr><td class="label">{"cash (t-bills)" if cash >= 0 else "borrowing"}</td>{td(cash, "x")}{td(cash * eq, "usd")}</tr>'
-    html(f'<table class="plain"><tr><th>holding</th><th>weight (x equity)</th><th>value</th></tr>{rows}'
-         f'<tr class="total first"><td>account value</td><td></td>{td(eq, "usd")}</tr></table>')
+    rows += f'<tr><td class="label">{"Cash (T-bills)" if cash >= 0 else "Borrowing"}</td>{td(cash, "x")}{td(cash * eq, "m")}</tr>'
+    html(f'<table class="plain"><tr><th>Holding</th><th>Weight (x mandate)</th><th>Value</th></tr>{rows}'
+         f'<tr class="total first"><td>Mandate value</td><td></td>{td(eq, "m")}</tr></table>')
 
-    html('<h4>trades</h4>')
     d0 = px.index[px.index.get_loc(lb.index[0]) - 1]                # initial purchase at the last close of 2025
     w0 = pd.Series(lb.attrs['opening_weights'], index=ASSETS)
     W = pd.concat([w0.to_frame(d0).T, W])
     gross = pd.concat([pd.Series(0.0, index=[d0]), lb.gross])
-    V = pd.concat([pd.Series(dep * (1 - lb.attrs['opening_cost']), index=[d0]), value])
-    eq_before = V.shift(1).fillna(dep) * (1 + gross)          # equity at each close, before that day's costs
+    V = pd.concat([pd.Series(size * (1 - lb.attrs['opening_cost']), index=[d0]), value])
+    eq_before = V.shift(1).fillna(size) * (1 + gross)          # value at each close, before that day's costs
     drift = W.shift(1).fillna(0) * (1 + px[ASSETS].pct_change().loc[W.index]) / (1 + gross).values[:, None]
     trades = ((W - drift) * eq_before.values[:, None]).stack()
-    trades = trades[trades.abs() > 0.005].iloc[::-1]
-    note(f'{len(trades)} trades, newest first, including the initial purchase; '
-         f'costs of {p0.cost * 1e4:.0f} bp per unit traded are deducted from the account.')
-    rows = ''.join(f'<tr><td>{d:%d %b %Y}'.lower() + f'</td><td class="label">{a.lower()}</td><td class="dim">'
-                   f'{"buy" if v > 0 else "sell"}</td>{td(abs(v), "usd")}</tr>' for (d, a), v in trades.items())
-    html(f'<table class="plain compact"><tr><th>date</th><th>asset</th><th>side</th><th>amount</th></tr>{rows}</table>')
+    trades = trades[trades.abs() > 0.005 * size / 1000].iloc[::-1]
+    with st.expander(f'Trades since 31 Dec 2025 ({len(trades)}, newest first)'):
+        note(f'Including the initial purchase. Costs of {p0.cost * 1e4:.0f} bp per unit traded are deducted from the mandate.')
+        rows = ''.join(f'<tr><td>{d:%d %b %Y}</td><td class="label">{a}</td><td class="dim">'
+                       f'{"Buy" if v > 0 else "Sell"}</td>{td(abs(v), "m")}</tr>' for (d, a), v in trades.items())
+        html(f'<table class="plain compact"><tr><th>Date</th><th>Asset</th><th>Side</th><th>Amount</th></tr>{rows}</table>')
 
 
 def loader(key):
@@ -1054,16 +1049,18 @@ Object.assign(f.style, {{display: 'block', opacity: 1, position: 'fixed', inset:
 </script>""", height=0)
 
 
-pages = [st.Page(home, title='home', url_path='home', default=True), st.Page(thesis, title='thesis', url_path='thesis'),
-         st.Page(performance, title='performance', url_path='performance'),
-         st.Page(annual_returns, title='annual returns', url_path='annual-returns'),
-         st.Page(stress_tests, title='stress tests', url_path='stress-tests'),
-         st.Page(attribution, title='attribution', url_path='attribution'),
-         st.Page(live_2026, title='live: 2026', url_path='live-2026'), st.Page(rules, title='rules', url_path='rules'),
-         st.Page(risks, title='risks', url_path='risks'), st.Page(team, title='team', url_path='team'),
-         st.Page(investor, title='investor login', url_path='investor-login')]
-nav = st.navigation(pages, position='sidebar')
-st.sidebar.markdown(f'<p class="ext"><a href="{REPO}">source code</a><br><a href="{COLAB}">notebook</a></p>',
-                    unsafe_allow_html=True)
+page = lambda f, t, u: st.Page(f, title=t, url_path=u)
+nav = st.navigation({'': [st.Page(home, title='Overview', default=True)],
+                     'Strategy': [page(thesis, 'Investment approach', 'thesis'), page(rules, 'Rules', 'rules')],
+                     'Results': [page(performance, 'Performance', 'performance'), page(annual_returns, 'Annual returns', 'annual-returns'),
+                                 page(attribution, 'Attribution', 'attribution'), page(live_2026, 'Live 2026', 'live-2026')],
+                     'Risk': [page(stress_tests, 'Stress tests', 'stress-tests'), page(risks, 'Risks', 'risks')],
+                     'About': [page(team, 'Team', 'team'), page(mandate_report, 'Sample mandate report', 'mandate-report')]},
+                    position='top')
 loader(f"{nav.url_path}|{st.session_state.get('params', DEFAULTS)}")
 nav.run()
+html(f'<div class="site-foot"><p>{FUND} is a student project for the course 2270 Financial Modeling at Nova SBE. It is not an '
+     'investment firm and offers no investment services. All performance figures are simulated: a backtest from January 2006 '
+     'to December 2025, and the frozen rules run live since 1 January 2026, in US dollars, net of modelled trading, financing '
+     'and borrow costs, before management fees and taxes. Past performance does not predict future results.</p>'
+     f'<p class="links"><a href="{COLAB}">Notebook</a> &middot; <a href="{REPO}">Source code</a></p></div>')
