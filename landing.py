@@ -83,6 +83,8 @@ document.querySelectorAll('[data-go]').forEach(btn=>btn.onclick=()=>{const p=btn
  try{const a=parent.document.querySelector(`a[href$="/${p}"]`);if(a){a.click();return;}}catch(e){}
  try{parent.location.href=p;}catch(e){window.open(p,'_top');}});
 const fit=()=>{try{const h=Math.ceil($('lp').getBoundingClientRect().height)+4+'px';frameElement.style.height=h;const box=frameElement.parentElement;if(box){box.style.height=h;box.style.minHeight=h;box.style.flex="0 0 "+h;}}catch(e){}};  // the streamlit wrapper keeps the height passed from python, so resize it too
+const unfit=()=>{try{const box=frameElement.parentElement;if(box){box.style.height="";box.style.minHeight="";box.style.flex="";}}catch(e){}};  // streamlit reuses this wrapper for the next page's element: give its height back when the frame goes
+addEventListener("pagehide",unfit);addEventListener("unload",unfit);
 new ResizeObserver(fit).observe($('lp'));fit();
 const t0=Date.now();(function ready(){let busy=false;try{busy=parent.document.querySelector('.stApp')?.dataset.testScriptState==='running';}catch(e){}
  if((busy||Date.now()-t0<1500)&&Date.now()-t0<6000)return setTimeout(ready,100);intro();})();

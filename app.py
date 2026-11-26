@@ -18,6 +18,7 @@ import streamlit.components.v1 as components
 from strategy import ASSETS, Params, load_live, load_prices, monthly, pair_targets, run, wealth
 from replay import replay
 from landing import landing
+from statement import statement_pdf
 
 FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
 ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
@@ -293,6 +294,10 @@ div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(3) { o
 div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(n+7) { order: 6 !important; }
 
 /* sample mandate report */
+.st-key-mr_pdf { display: flex; justify-content: flex-end; }
+.stApp .st-key-mr_pdf button { background: var(--ink) !important; border-radius: 980px !important; padding: 0 22px !important;
+  min-height: 36px !important; }
+.stApp .st-key-mr_pdf button * { color: var(--paper) !important; text-decoration: none !important; font-size: 13.5px !important; font-weight: 500; }
 .hero { margin: 28px 0 8px; }
 .hero p { margin: 0 !important; }
 .hero p.k { font-size: 12.5px !important; color: var(--muted) !important; }
@@ -604,13 +609,11 @@ def with_daily_dd(table, bt, bench):
     return t
 
 
-def performance_view(p, res, table=None):
+def performance_view(p, res):
     bt, bench = res['bt'], res['bench_d']
     w_s, w_b = wealth(bt.net), wealth(bench)
     replay(res, p, DEFAULTS)                                       # lede + growth of $1 with year-by-year replay
-    if table is None:
-        table = with_daily_dd(res['table'], bt, bench).rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP})
-    metrics_table(table, table.columns[0])
+    metrics_table(with_daily_dd(res['table'], bt, bench).rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP}), PF)
     chart('Drawdown, daily', [(PF, w_s, S1), (SP, w_b, S2)], kind='drawdown', h=2.2)
     rf_d = (get_prices()['^IRX'] / 100 / 252).shift(1).loc[bt.index]
     csv = monthly(pd.DataFrame({'portfolio_net': bt.net, 'portfolio_gross': bt.gross, 'equity_sleeve': res['spy_only'].net,
@@ -653,14 +656,17 @@ def assumptions():
     if p == DEFAULTS:
         note('These are the base-case figures shown on every other page. Change a setting above and press Run.')
         table = mine.rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP})
+        lines = [(PF, wealth(bt.net), S1), (SP, wealth(bench), S2)]
     else:                                                          # base case over the same years, so only the rules differ
         base = get_results(CODE, **{**asdict(DEFAULTS), 'start': p.start, 'end': p.end})
         table = pd.DataFrame({'Your assumptions': mine['Strategy (net)'],
                               'Base case': with_daily_dd(base['table'], base['bt'], base['bench_d'])['Strategy (net)'],
                               SP: mine['S&P 500 TR']})
+        lines = [('Your assumptions', wealth(bt.net), S1), ('Base case', wealth(base['bt'].net), S3), (SP, wealth(bench), S2)]
         note(f'Your assumptions against the base case over the same years ({p.start[:4]}&ndash;{p.end[:4]}). Every other page '
              'shows the base case.')
-    performance_view(p, res, table)
+    metrics_table(table, table.columns[0])
+    chart('Growth of $1, log scale', lines)
 
 
 def annual_returns():
@@ -982,29 +988,58 @@ def save_settings():
     ss['mr_size'], ss['mr_tv'], ss['mr_view'] = ss['f_size'] * 1e6, ss['f_tv'] / 100, 'Report'
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def mandate_data(size, tv, code=CODE):
+    """everything the mandate report and its pdf statement show, for a mandate of `size` dollars at volatility target tv"""
+    live, px = get_live(tv)
+    lb, lbench = live['bt'], live['bench_d']
+    value, bench_value = size * (1 + lb.net).cumprod(), size * (1 + lbench).cumprod()
+    W = lb[[f'w_{a}' for a in ASSETS]].set_axis(ASSETS, axis=1)
+    d0 = px.index[px.index.get_loc(lb.index[0]) - 1]                # initial purchase at the last close of 2025
+    Wt = pd.concat([pd.Series(lb.attrs['opening_weights'], index=ASSETS).to_frame(d0).T, W])
+    gross = pd.concat([pd.Series(0.0, index=[d0]), lb.gross])
+    V = pd.concat([pd.Series(size * (1 - lb.attrs['opening_cost']), index=[d0]), value])
+    eq_before = V.shift(1).fillna(size) * (1 + gross)               # value at each close, before that day's costs
+    drift = Wt.shift(1).fillna(0) * (1 + px[ASSETS].pct_change().loc[Wt.index]) / (1 + gross).values[:, None]
+    trades = ((Wt - drift) * eq_before.values[:, None]).stack()
+    limits = [('Realised volatility since 1 Jan (annualised, monthly)', num(monthly(lb.net).std() * 12 ** .5)[0], f'{tv:.0%} budget'),
+              ('Equity exposure today', f'{lb.w_spy.iloc[-1]:.2f}x', f'{DEFAULTS.max_lev:.2f}x cap'),
+              ('Gross exposure today', f'{lb.gross_exposure.iloc[-1]:.2f}x', ''),
+              ('Max drawdown since 1 Jan (daily)', num(daily_dd(lb.net))[0], '')]
+    return dict(size=size, tv=tv, lb=lb, px=px, value=value, bench_value=bench_value, pos=W.iloc[-1],
+                trades=trades[trades.abs() > 0.005 * size / 1000], monthly=monthly(lb.net), monthly_bench=monthly(lbench),
+                limits=[(k, v, l.replace('&nbsp;', ' ')) for k, v, l in limits])
+
+
+@st.cache_data(ttl=3600, show_spinner='Preparing the statement ...')
+def mandate_pdf(size, tv, code=CODE):
+    return statement_pdf(mandate_data(size, tv))
+
+
 def mandate_report():
     heading('Sample mandate report')
     note('Illustrative only: a simulated pension mandate, no capital is invested. The rules were frozen at the 31 Dec 2025 close.')
     ss = st.session_state
     size, tv = ss.get('mr_size', MANDATE), ss.get('mr_tv', DEFAULTS.target_vol)
     ss.setdefault('mr_view', 'Report')                             # state, not default=: save_settings also sets it
-    view = st.segmented_control('view', ['Report', 'Settings'], key='mr_view', label_visibility='collapsed',
-                                on_change=lambda: ss.update(mr_view=ss['mr_view'] or 'Report'))   # no empty selection
+    top, pdf = st.columns([3, 2], vertical_alignment='center')
+    view = top.segmented_control('view', ['Report', 'Settings'], key='mr_view', label_visibility='collapsed',
+                                 on_change=lambda: ss.update(mr_view=ss['mr_view'] or 'Report'))   # no empty selection
     if view == 'Settings':
         with st.form('mr_settings'):
             st.number_input('Mandate size at the 31 Dec 2025 close ($m)', 1.0, 10_000.0, size / 1e6, 10.0, format='%.0f', key='f_size')
             st.select_slider('Risk budget: volatility target (% a year)', list(range(5, 31)), round(tv * 100), key='f_tv')
-            note('The whole report is recalculated from 1 Jan 2026 with these settings.')
+            note('The whole report and the PDF statement are recalculated from 1 Jan 2026 with these settings.')
             st.form_submit_button('Save', type='primary', on_click=save_settings)
         return
     try:
-        live, px = get_live(tv)
+        d = mandate_data(size, tv)
     except RuntimeError as e:                                   # download failed; real bugs still surface
         note(str(e))
         return
-    lb, lbench = live['bt'], live['bench_d']
-    value = size * (1 + lb.net).cumprod()
-    bench_value = size * (1 + lbench).cumprod()
+    lb, px, value, bench_value = d['lb'], d['px'], d['value'], d['bench_value']
+    pdf.download_button('Download PDF statement', mandate_pdf(size, tv), key='mr_pdf', type='primary',
+                        file_name=f'mvp_mandate_statement_{lb.index[-1]:%Y%m%d}.pdf', mime='application/pdf')
     gain = value.iloc[-1] - size
     signed = lambda v, kind: ('+' if v >= 0 else '') + num(v, kind)[0]
     html(f'<div class="hero"><p class="k">Mandate value at the {lb.index[-1]:%d %b %Y} close</p>'
@@ -1014,12 +1049,8 @@ def mandate_report():
          f'&middot; {tv:.0%} risk budget</span></p></div>')
 
     html('<h4>Risk against limits</h4>')
-    lim = [('Realised volatility since 1 Jan (annualised, monthly)', num(monthly(lb.net).std() * 12 ** .5)[0], f'{tv:.0%} budget'),
-           ('Equity exposure today', f'{lb.w_spy.iloc[-1]:.2f}x', f'{DEFAULTS.max_lev:.2f}x cap'),
-           ('Gross exposure today', f'{lb.gross_exposure.iloc[-1]:.2f}x', ''),
-           ('Max drawdown since 1 Jan (daily)', num(daily_dd(lb.net))[0], '')]
     html('<table class="plain"><tr><th></th><th>Current</th><th>Limit</th></tr>'
-         + ''.join(f'<tr><td class="label">{k}</td><td class="em">{v}</td><td class="dim">{l}</td></tr>' for k, v, l in lim)
+         + ''.join(f'<tr><td class="label">{k}</td><td class="em">{v}</td><td class="dim">{l}</td></tr>' for k, v, l in d['limits'])
          + '</table>')
     start = pd.Series(size / 1e6, index=[pd.Timestamp('2025-12-31')])
     chart('Mandate value ($m)', [(PF, pd.concat([start, value / 1e6]), S1), (SP, pd.concat([start, bench_value / 1e6]), S2)],
@@ -1042,29 +1073,19 @@ def mandate_report():
     note(f'Dashed lines: entry at |z| &gt; {p0.z_in:g}, short the rich leg and buy the cheap one. Dotted lines: exit at '
          f'|z| &lt; {p0.z_out:g}.')
 
-    W = lb[[f'w_{a}' for a in ASSETS]].set_axis(ASSETS, axis=1)
     html('<h4>Positions</h4>')
-    eq = value.iloc[-1]
-    pos = W.iloc[-1]
+    eq, pos = value.iloc[-1], d['pos']
     rows = ''.join(f'<tr><td class="label">{a}</td>{td(w, "x")}{td(w * eq, "m")}</tr>' for a, w in pos.items() if abs(w) > 1e-9)
     cash = 1 - pos.sum()
     rows += f'<tr><td class="label">{"Cash (T-bills)" if cash >= 0 else "Borrowing"}</td>{td(cash, "x")}{td(cash * eq, "m")}</tr>'
     html(f'<table class="plain"><tr><th>Holding</th><th>Weight (x mandate)</th><th>Value</th></tr>{rows}'
          f'<tr class="total first"><td>Mandate value</td><td></td>{td(eq, "m")}</tr></table>')
 
-    d0 = px.index[px.index.get_loc(lb.index[0]) - 1]                # initial purchase at the last close of 2025
-    w0 = pd.Series(lb.attrs['opening_weights'], index=ASSETS)
-    W = pd.concat([w0.to_frame(d0).T, W])
-    gross = pd.concat([pd.Series(0.0, index=[d0]), lb.gross])
-    V = pd.concat([pd.Series(size * (1 - lb.attrs['opening_cost']), index=[d0]), value])
-    eq_before = V.shift(1).fillna(size) * (1 + gross)          # value at each close, before that day's costs
-    drift = W.shift(1).fillna(0) * (1 + px[ASSETS].pct_change().loc[W.index]) / (1 + gross).values[:, None]
-    trades = ((W - drift) * eq_before.values[:, None]).stack()
-    trades = trades[trades.abs() > 0.005 * size / 1000].iloc[::-1]
+    trades = d['trades'].iloc[::-1]
     with st.expander(f'Trades since 31 Dec 2025 ({len(trades)}, newest first)'):
         note(f'Including the initial purchase. Costs of {p0.cost * 1e4:.0f} bp per unit traded are deducted from the mandate.')
-        rows = ''.join(f'<tr><td>{d:%d %b %Y}</td><td class="label">{a}</td><td class="dim">'
-                       f'{"Buy" if v > 0 else "Sell"}</td>{td(abs(v), "m")}</tr>' for (d, a), v in trades.items())
+        rows = ''.join(f'<tr><td>{t:%d %b %Y}</td><td class="label">{a}</td><td class="dim">'
+                       f'{"Buy" if v > 0 else "Sell"}</td>{td(abs(v), "m")}</tr>' for (t, a), v in trades.items())
         html(f'<table class="plain compact"><tr><th>Date</th><th>Asset</th><th>Side</th><th>Amount</th></tr>{rows}</table>')
 
 
@@ -1090,7 +1111,7 @@ Object.assign(f.style, {{display: 'block', opacity: 1, position: 'fixed', inset:
 
 
 page = lambda f, t, u: st.Page(f, title=t, url_path=u)
-nav = st.navigation({'': [st.Page(home, title='Overview', default=True), page(assumptions, 'Test your assumptions', 'assumptions'),
+nav = st.navigation({'': [st.Page(home, title='Home', default=True), page(assumptions, 'Test your assumptions', 'assumptions'),
                           page(team, 'Team', 'team')],              # shown after the groups, see the css order rules
                      'Strategy': [page(thesis, 'Investment approach', 'thesis'), page(rules, 'Rules', 'rules')],
                      'Results': [page(performance, 'Performance', 'performance'), page(live_2026, 'Live 2026', 'live-2026'),
