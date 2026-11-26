@@ -74,38 +74,38 @@ def replay(res, p, defaults):
 PAGE = r"""<style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
 html,body{margin:0;background:transparent}
-#app{color:#101924;font-family:'IBM Plex Sans',sans-serif;padding:2px 1px 8px}
+#app{color:#0e1a2b;font-family:'IBM Plex Sans',sans-serif;padding:2px 1px 8px}
 .mono{font-variant-numeric:tabular-nums lining-nums}
 .lede{font-family:'Newsreader',serif;font-size:19px;line-height:1.45;margin:0 0 22px;max-width:60ch}
 .lede b{font-weight:600;font-variant-numeric:tabular-nums lining-nums}
-.hd{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid #101924}
-.lg{display:flex;gap:18px;font-size:13.5px;color:#555b63}.lg span{display:flex;align-items:center;gap:7px}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid #0e1a2b}
+.lg{display:flex;gap:18px;font-size:13.5px;color:#4d5866}.lg span{display:flex;align-items:center;gap:7px}
 .lg i{width:20px;height:3px;border-radius:2px;display:inline-block}
 .ctl{display:flex;align-items:center;gap:18px;margin:18px 0 26px;flex-wrap:wrap}
-#pl{all:unset;cursor:pointer;font-size:13px;font-weight:500;background:#101924;color:#fff;border-radius:999px;padding:8px 24px}
+#pl{all:unset;cursor:pointer;font-size:13px;font-weight:500;background:#071a3a;color:#fff;border-radius:999px;padding:8px 24px}
 #pl:hover{background:#0b2648}
 #tg{all:unset;cursor:pointer;font-size:13px;color:#0b2648;font-weight:500;display:inline-flex;align-items:center;gap:6px;padding:2px 0}
 #tg:hover{text-decoration:underline;text-underline-offset:3px}
-.start{flex:1;min-width:210px;max-width:280px;display:flex;align-items:center;gap:12px;margin-left:auto;font-size:13.5px;color:#555b63}
-#yr{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:#101924;outline:none;margin:0}
-#yr::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#101924;cursor:grab}
-#yr::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:#101924;cursor:grab}
-.r{display:grid;grid-template-columns:124px minmax(0,1fr);gap:16px;padding:10px 0;border-bottom:.5px solid #e4e4e1;font-size:14px;line-height:1.55}
-.r .k{color:#0b2648;font-size:13.5px;font-weight:600}
+.start{flex:1;min-width:210px;max-width:280px;display:flex;align-items:center;gap:12px;margin-left:auto;font-size:13.5px;color:#4d5866}
+#yr{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:#0e1a2b;outline:none;margin:0}
+#yr::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#0e1a2b;cursor:grab}
+#yr::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:#0e1a2b;cursor:grab}
+.r{display:grid;grid-template-columns:124px minmax(0,1fr);gap:16px;padding:10px 0;border-bottom:.5px solid #dde3ea;font-size:14px;line-height:1.55}
+.r .k{color:#0e7c70;font-size:13.5px;font-weight:600}
 @media (max-width:540px){.r{grid-template-columns:1fr;gap:2px}}
 #plot{position:relative;margin-top:12px}
-.pop{position:absolute;top:4px;left:0;width:min(290px,58%);box-sizing:border-box;background:rgba(255,255,255,.96);border:1px solid #e1e1de;border-radius:12px;
+.pop{position:absolute;top:4px;left:0;width:min(290px,58%);box-sizing:border-box;background:rgba(255,255,255,.96);border:1px solid #dde3ea;border-radius:12px;
  box-shadow:0 8px 24px rgba(16,25,36,.10);padding:11px 14px 12px;font-size:13px;line-height:1.45;pointer-events:none;opacity:0;transition:left .35s ease,opacity .25s}
 .pop .yr{font-weight:600;font-size:14px}.pop .tt{font-weight:400}
-.pop .nb{color:#555b63;font-size:12px;margin:3px 0 6px;font-variant-numeric:tabular-nums}
-.pop .nb b{font-weight:600;color:#0b2648}
+.pop .nb{color:#4d5866;font-size:12px;margin:3px 0 6px;font-variant-numeric:tabular-nums}
+.pop .nb b{font-weight:600;color:#0e7c70}
 @media (max-width:540px){.pop{width:68%;font-size:12px;padding:9px 11px}}
-.foot{margin:12px 0 0;font-size:12.5px;color:#848a90}
+.foot{margin:12px 0 0;font-size:12.5px;color:#8c95a0}
 .yt{cursor:pointer}
 </style>
 <div id="app">
   <p class="lede">$1 invested in <span id="l0"></span>: <b id="ls"></b> (S&amp;P 500 TR: <b id="lb"></b>) by <span id="l1"></span>.</p>
-  <div class="hd"><b style="font-weight:500;font-size:15px">Growth of $1, log scale</b><div class="lg"><span style="color:#0b2648"><i style="background:#0b2648"></i>Portfolio (net)</span><span><i style="background:#848a90"></i>S&amp;P 500 TR</span></div></div>
+  <div class="hd"><b style="font-weight:500;font-size:15px">Growth of $1, log scale</b><div class="lg"><span style="color:#0e7c70"><i style="background:#0e7c70"></i>Portfolio (net)</span><span><i style="background:#8c95a0"></i>S&amp;P 500 TR</span></div></div>
   <div id="plot"><svg id="sv" viewBox="0 0 640 340" width="100%" style="display:block;overflow:visible" role="img" aria-label="Growth of $1, equity exposure and years"></svg><div class="pop" id="pop" aria-live="polite"></div></div>
   <div class="ctl">
     <button id="pl">Play</button>
@@ -115,7 +115,7 @@ html,body{margin:0;background:transparent}
 </div>
 <script>
 const D=__DATA__,N=D.m.length,S=D.s,B=D.b,E=D.e,YS=D.y;
-const INK='#101924',MUTED='#555b63',S1='#0b2648',S2='#848a90',$=id=>document.getElementById(id),sv=$('sv');
+const INK='#0e1a2b',MUTED='#4d5866',S1='#0e7c70',S2='#8c95a0',$=id=>document.getElementById(id),sv=$('sv');
 const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const full=i=>MN[+D.m[i].slice(5,7)-1]+' '+D.m[i].slice(0,4);
 const first=y=>D.m.findIndex(s=>+s.slice(0,4)===y);
@@ -130,16 +130,16 @@ function init(){st0=first(yr);bs=st0?S[st0-1]:1;bb=st0?B[st0-1]:1;let lo=1,hi=1;
  let t='';[0.5,1,2,5,10,20,30,50,100].filter(v=>v>=lo/1.1&&v<=hi*1.1).forEach(v=>{t+=`<text x="${L-10}" y="${YY(v)+4}" text-anchor="end" font-family="IBM Plex Sans" font-size="11.5" fill="${MUTED}">$${v}</text>`;});
  t+=`<line x1="${L}" x2="${W}" y1="${YY(1)}" y2="${YY(1)}" stroke="${INK}"/>`;
  t+=`<text x="${L-10}" y="${ET+10}" text-anchor="end" font-family="IBM Plex Sans" font-size="11.5" fill="${MUTED}">2x</text><text x="${L-10}" y="${EB+3}" text-anchor="end" font-family="IBM Plex Sans" font-size="11.5" fill="${MUTED}">0x</text><text x="${L}" y="${ET-8}" font-family="IBM Plex Sans" font-size="12" fill="${MUTED}">Equity exposure</text><line x1="${L}" x2="${W}" y1="${EB}" y2="${EB}" stroke="${INK}"/>`;
- const bw=(W-L-6)/(N-st0);let eb='';for(let i=st0;i<N;i++)eb+=`<rect class="eb" data-i="${i}" x="${X(i)-bw+.3}" y="${EY(E[i])}" width="${Math.max(bw-.6,.5)}" height="${EB-EY(E[i])}" fill="#d0d3d6" opacity="0"/>`;
+ const bw=(W-L-6)/(N-st0);let eb='';for(let i=st0;i<N;i++)eb+=`<rect class="eb" data-i="${i}" x="${X(i)-bw+.3}" y="${EY(E[i])}" width="${Math.max(bw-.6,.5)}" height="${EB-EY(E[i])}" fill="#d5dbe3" opacity="0"/>`;
  let ax='';YS.forEach((o,k)=>{if(o.y<yr)return;const x0=X(first(o.y)-1),x1=X(last(o.y));
   ax+=`<g class="yt" data-k="${k}"><rect x="${x0}" y="${GT}" width="${x1-x0}" height="${AX+10-GT}" fill="transparent"/><line id="u${k}" x1="${x0+1}" x2="${x1-1}" y1="${EB+5}" y2="${EB+5}" stroke="${INK}" stroke-width="2" opacity="0"/><text id="t${k}" x="${(x0+x1)/2}" y="${AX}" text-anchor="middle" font-family="IBM Plex Sans" font-size="11.5" fill="${MUTED}">${o.y}</text></g>`;});
- sv.innerHTML=`<rect id="hl" y="${GT}" height="${EB-GT}" fill="#f4f4f2" opacity="0"/>${t}${eb}<path id="pb" fill="none" stroke="${S2}" stroke-width="1.5" stroke-linejoin="round"/><path id="ps" fill="none" stroke="${S1}" stroke-width="2.2" stroke-linejoin="round"/>${ax}`;
+ sv.innerHTML=`<rect id="hl" y="${GT}" height="${EB-GT}" fill="#eef2f6" opacity="0"/>${t}${eb}<path id="pb" fill="none" stroke="${S2}" stroke-width="1.5" stroke-linejoin="round"/><path id="ps" fill="none" stroke="${S1}" stroke-width="2.2" stroke-linejoin="round"/>${ax}`;
  sv.querySelectorAll('.yt').forEach(g=>{g.onclick=()=>{stop();show(+g.dataset.k,true);};});
  $('l0').textContent=full(st0);}
 function line(f,n){let d=`M${L},${YY(1)}`;for(let i=st0;i<=n;i++)d+=`L${X(i).toFixed(1)},${YY(f(i)).toFixed(1)}`;return d;}
 function render(n){$('ps').setAttribute('d',line(vs,n));$('pb').setAttribute('d',line(vb,n));
  $('ls').textContent='$'+(n<st0?1:vs(n)).toFixed(2);$('lb').textContent='$'+(n<st0?1:vb(n)).toFixed(2);$('l1').textContent=full(Math.max(n,st0));
- const sy=YS[sel].y;sv.querySelectorAll('.eb').forEach(r=>{const i=+r.dataset.i;r.setAttribute('opacity',i>n?0:1);r.setAttribute('fill',yOf(i)===sy?S1:'#d0d3d6');});}
+ const sy=YS[sel].y;sv.querySelectorAll('.eb').forEach(r=>{const i=+r.dataset.i;r.setAttribute('opacity',i>n?0:1);r.setAttribute('fill',yOf(i)===sy?S1:'#d5dbe3');});}
 function mark(k){const y=YS[k].y,a=X(Math.max(first(y),st0)-1),b=X(last(y));$('hl').setAttribute('x',a);$('hl').setAttribute('width',b-a);$('hl').setAttribute('opacity',1);
  YS.forEach((o,j)=>{const u=$('u'+j),t=$('t'+j);if(!u)return;const s=j===k;u.setAttribute('opacity',s?1:0);t.setAttribute('fill',s?INK:MUTED);t.setAttribute('font-weight',s?500:400);t.setAttribute('opacity',s||((!many()||o.y%4===0)&&Math.abs(o.y-YS[k].y)>(many()?1:0))?1:0);});}
 const pct=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%';

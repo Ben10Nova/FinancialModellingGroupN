@@ -38,12 +38,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:#06122e}
 #stage>*{position:absolute;inset:0;width:100%;height:100%}
 .sky{clip-path:__SKY__}
 #water{clip-path:__WATER__}
-.aur{mix-blend-mode:screen;opacity:.15;transform-origin:50% 66.5%;animation:breathe 11s ease-in-out infinite,drift 23s ease-in-out infinite alternate}
-.aur.g{filter:hue-rotate(-30deg) saturate(1.3);animation-duration:17s,31s;animation-delay:-6s,-9s;animation-direction:normal,alternate-reverse}
+.aur{mix-blend-mode:screen;opacity:.1;transform-origin:50% 66.5%;animation:breathe 8s ease-in-out infinite,drift 16s ease-in-out infinite alternate}
+.aur.g{filter:hue-rotate(-34deg) saturate(1.5);animation-duration:13s,21s;animation-delay:-5s,-7s;animation-direction:normal,alternate-reverse}
 .aur.w{clip-path:__WATER__;animation-name:breathe,driftw}
-@keyframes breathe{0%,100%{opacity:.12}50%{opacity:.75}}
-@keyframes drift{from{transform:translateX(-1.3%) scaleY(1)}to{transform:translateX(1.3%) scaleY(1.05)}}
-@keyframes driftw{from{transform:translateX(-1.3%) scaleY(1)}to{transform:translateX(1.3%) scaleY(1.03)}}
+@keyframes breathe{0%,100%{opacity:.04}50%{opacity:1}}
+@keyframes drift{from{transform:translateX(-3%) scaleY(.97)}to{transform:translateX(3%) scaleY(1.08)}}
+@keyframes driftw{from{transform:translateX(-3%) scaleY(.98)}to{transform:translateX(3%) scaleY(1.05)}}
 #shade{position:fixed;inset:0;background:linear-gradient(180deg,rgba(3,10,28,.55),rgba(3,10,28,0) 22%),
  linear-gradient(90deg,rgba(3,10,28,.62),rgba(3,10,28,.2) 55%,rgba(3,10,28,0) 80%)}
 #txt{position:fixed;left:var(--pad);right:var(--pad);top:50%;transform:translateY(-38%);color:#fff;font-family:'IBM Plex Sans',sans-serif}
@@ -59,7 +59,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#06122e}
 .fade{opacity:0;transform:translateY(10px);transition:opacity 1.1s ease,transform 1.1s ease}.fade.in{opacity:1;transform:none}
 @media (max-width:760px){.brand{display:block}.nums{grid-template-columns:repeat(2,max-content)}#txt{transform:translateY(-45%)}
  .nums b{font-size:44px}.nums span{font-size:13px}#fine{bottom:64px;right:var(--pad)}}
-@media (prefers-reduced-motion:reduce){.aur{animation:none}.fade{transition:none}}
+@media (prefers-reduced-motion:reduce){.aur{animation-name:breathe,none}.fade{transition:none}}
 </style>
 <div id="stage"><canvas id="water"></canvas><canvas class="aur sky"></canvas><canvas class="aur sky g"></canvas><canvas class="aur w"></canvas><canvas id="stars" class="sky"></canvas></div>
 <div id="shade"></div>
@@ -82,22 +82,22 @@ function aurora(){                                         // the aurora alone: 
  for(let i=0;i<p.length;i+=4){const s=p[i+1]-.5*(p[i]+p[i+2]);p[i+3]=Math.max(0,Math.min(255,(s-4)*8.5));}
  x.putImageData(d,0,0);
  document.querySelectorAll('.aur').forEach(a=>{a.width=w;a.height=h;const y=a.getContext('2d');y.filter='blur(1.5px)';y.drawImage(c,0,0);});}
-const S=D.stars.map(([x,y,a])=>({x:x/100,y:y/100,a,ph:Math.random()*6.28,sp:.6+Math.random()*1.4}));
+const S=D.stars.map(([x,y,a])=>({x:x/100,y:y/100,a,ph:Math.random()*6.28,sp:.8+Math.random()*2}));
 function frame(ms){const t=ms/1000,g=wc.getContext('2d'),s=sc.getContext('2d'),w=W*dpr,h=H*dpr;
  // water: redraw the reflection in thin bands, each nudged sideways by a slow wave, a little more towards the viewer
  const y0=Math.round(h*TOP),band=2*dpr,sh=IH/h*band;g.clearRect(0,0,w,h);
- for(let y=y0;y<h;y+=band){const k=(y-y0)/(h-y0),dx=(.5+1.6*k)*dpr*Math.sin(y/(7*dpr)*.55+t*.9+Math.sin(t*.23+y/(60*dpr)));
+ for(let y=y0;y<h;y+=band){const k=(y-y0)/(h-y0),dx=(.8+2.6*k)*dpr*Math.sin(y/(7*dpr)*.55+t*1.3+Math.sin(t*.3+y/(60*dpr)));
   g.drawImage(img,0,y/h*IH,IW,sh,dx-4*dpr,y,w+8*dpr,band);}
  // stars: each fades in and out on its own slow rhythm, at most a soft glow
  s.clearRect(0,0,w,h);
  for(const o of S){const v=.5+.5*Math.sin(t*o.sp+o.ph);if(v<.35)continue;const r=(1+1.2*o.a)*dpr;
-  const gr=s.createRadialGradient(o.x*w,o.y*h,0,o.x*w,o.y*h,r*2.4);gr.addColorStop(0,`rgba(235,245,255,${.75*o.a*(v-.35)/.65})`);gr.addColorStop(1,'rgba(235,245,255,0)');
+  const gr=s.createRadialGradient(o.x*w,o.y*h,0,o.x*w,o.y*h,r*2.4);gr.addColorStop(0,`rgba(235,245,255,${(.45+.5*o.a)*(v-.35)/.65})`);gr.addColorStop(1,'rgba(235,245,255,0)');
   s.fillStyle=gr;s.fillRect(o.x*w-r*2.4,o.y*h-r*2.4,r*4.8,r*4.8);}}
 let last=0;function loop(ms){if(ms-last>40){last=ms;frame(ms);}requestAnimationFrame(loop);}   // about 25 frames a second
 function count(el){const v=+el.dataset.v,f=+el.dataset.f,s=el.dataset.s,t0=performance.now(),dur=1600;
  (function tick(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=sg((v*e).toFixed(f))+s;if(p<1)requestAnimationFrame(tick);else el.textContent=sg(v.toFixed(f))+s;})(t0);}
 img.onload=()=>{st.style.backgroundImage=`url(${img.src})`;layout();aurora();addEventListener('resize',()=>{layout();if(still)frame(0);});
- if(still){frame(0);document.querySelectorAll('.fade').forEach(e=>e.classList.add('in'));return;}
+ if(still){frame(0);document.querySelectorAll('.fade').forEach(e=>e.classList.add('in'));return;}   // reduce motion: still water and stars
  requestAnimationFrame(loop);
  document.querySelectorAll('.fade').forEach((e,i)=>setTimeout(()=>e.classList.add('in'),250+i*220));
  setTimeout(()=>document.querySelectorAll('.nums b').forEach(count),700);};
