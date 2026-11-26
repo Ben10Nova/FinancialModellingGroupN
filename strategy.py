@@ -2,6 +2,7 @@
 test_strategy.py checks that the default numbers match the notebook."""
 from dataclasses import dataclass
 from itertools import groupby
+import time
 import numpy as np, pandas as pd, statsmodels.api as sm, yfinance as yf
 
 SECTORS = ['XLB', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLU', 'XLV', 'XLY']
@@ -28,11 +29,28 @@ class Params:
     short_fee: float = 0.0025
 
 
+_cooldown = {'until': 0.0}
+
+
+def _download(ok, **kw):
+    """yahoo with two retries. after a failed attempt, no new request for 60s: hammering a rate limit keeps it alive"""
+    msg = 'Yahoo Finance is rate-limiting downloads right now. Please reload in a minute.'
+    if time.time() < _cooldown['until']:
+        raise RuntimeError(msg)
+    for wait in (0, 3, 10):
+        time.sleep(wait)
+        try:
+            raw = yf.download(TICKERS, auto_adjust=True, progress=False, **kw)['Close'][TICKERS]
+            if ok(raw[ASSETS + ['^SP500TR']]):
+                return raw
+        except Exception:
+            pass
+    _cooldown['until'] = time.time() + 60
+    raise RuntimeError(msg)
+
+
 def load_prices(start=DATA_START, end=DATA_END):
-    raw = yf.download(TICKERS, start=start, end=pd.Timestamp(end) + pd.Timedelta(days=1),
-                      auto_adjust=True, progress=False)['Close'][TICKERS]
-    if not raw[ASSETS + ['^SP500TR']].notna().all().all():
-        raise RuntimeError('Price download incomplete (Yahoo rate limit?). Please reload in a minute.')
+    raw = _download(lambda r: r.notna().all().all(), start=start, end=pd.Timestamp(end) + pd.Timedelta(days=1))
     px = raw.copy()
     px['^IRX'] = px['^IRX'].ffill()
     return px.dropna()
@@ -40,7 +58,7 @@ def load_prices(start=DATA_START, end=DATA_END):
 
 def load_live(start='2024-01-01'):
     # prices up to today; dropna also drops today's row if an index has not printed yet
-    raw = yf.download(TICKERS, start=start, auto_adjust=True, progress=False)['Close'][TICKERS]
+    raw = _download(lambda r: len(r.dropna()) > 250, start=start)
     raw['^IRX'] = raw['^IRX'].ffill()
     return raw.dropna()
 
@@ -257,6 +275,7 @@ def run(px, p=Params()):
     P, chosen, _ = pair_targets(px, p)
     yearly['Pair held'] = [('/'.join(chosen[y]) if p.pair_size > 0 else '–') for y in yearly.index]
     return dict(bt=bt, spy_only=spy_only, pair_only=pair_only, bench_d=bench_d, table=table, sleeves=sleeves, risk=risk,
-                rolling=rolling_greeks(monthly(bt.net), rf_m, bench_m), mc=monte_carlo(monthly(bt.net), rf_m, bench_m),
+                rolling=rolling_greeks(monthly(bt.net), rf_m, bench_m),
+                mc=monte_carlo(monthly(bt.net), rf_m, bench_m) if len(bench_m) >= 24 else None,   # live 2026: too short
                 yearly=yearly, exposure_now=float(spy_exposure(px, p, pair_returns(px, P * p.pair_size)).loc[:p.end].iloc[-1]),
                 pair_now=chosen[max(chosen)])

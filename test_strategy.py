@@ -1,6 +1,6 @@
 """Run: python test_strategy.py  (needs internet). Fails if the app logic drifts from the notebook."""
 import numpy as np
-from strategy import Params, load_prices, run, backtest, pair_targets
+from strategy import Params, load_live, load_prices, run, backtest, pair_targets
 
 px = load_prices()
 res = run(px)
@@ -25,4 +25,7 @@ tgt, _, z = pair_targets(px, Params())                    # every new pair posit
 nz = tgt.ne(0)                                            # new set of open legs = an entry (hedge-ratio resets are not)
 opened = nz.ne(nz.shift(fill_value=False)).any(axis=1) & nz.any(axis=1) & z.notna()
 assert opened.sum() > 50 and (z[opened].abs() > Params().z_in).all(), z[opened][z[opened].abs() <= Params().z_in]
+live = load_live()                                                    # live 2026 (11 months) must run too
+assert len(run(live, Params(start='2026-01-01', end=str(live.index[-1].date())))['bt']) > 100
+
 print(f'ok: app matches notebook (performance, risk profile, monte carlo), no look-ahead, all {opened.sum()} pair entries at |z| > {Params().z_in}')

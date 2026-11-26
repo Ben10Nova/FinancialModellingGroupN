@@ -401,7 +401,7 @@ def clickable(key, rows):
                 dive(lead.rstrip('.'), lambda: html(''.join(f'<p>{t}</p>' for t in more())))
 
 
-@st.cache_data(ttl=86400, show_spinner=False)
+@st.cache_data(persist='disk', show_spinner=False)          # 2006-2025 never changes: one download per container
 def get_prices():
     return load_prices()
 
@@ -411,9 +411,14 @@ def get_results(code, **kw):
     return run(get_prices(), Params(**kw))
 
 
-@st.cache_data(ttl=3600, show_spinner='loading live prices ...')
+@st.cache_data(ttl=3600, show_spinner='loading live prices ...')   # one live download per hour, whatever the settings
+def live_prices():
+    return load_live()
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def get_live(target_vol=DEFAULTS.target_vol, code=CODE):
-    px = load_live()
+    px = live_prices()
     return run(px, Params(start=DEMO_START, end=str(px.index[-1].date()), target_vol=target_vol)), px
 
 
@@ -700,8 +705,8 @@ def live_2026():
          'strategy was never fitted on: a true out-of-sample check, separate from the prospectus numbers.</p>')
     try:
         live = get_live()[0]
-    except Exception:
-        note('live data unavailable right now (yahoo rate limit). reload in a minute.')
+    except RuntimeError as e:                                   # download failed; real bugs still surface
+        note(str(e).lower())
         return
     lb, lbench = live['bt'], live['bench_d']
     note(f'1 jan 2026 &rarr; {lb.index[-1]:%d %b %Y}'.lower())
@@ -949,8 +954,8 @@ def investor():
         return
     try:
         live, px = get_live(tv)
-    except Exception:
-        note('live data unavailable right now (yahoo rate limit). reload in a minute.')
+    except RuntimeError as e:                                   # download failed; real bugs still surface
+        note(str(e).lower())
         return
     lb, lbench = live['bt'], live['bench_d']
     value = dep * (1 + lb.net).cumprod()
