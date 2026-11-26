@@ -16,6 +16,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from strategy import ASSETS, Params, var_es, load_live, load_prices, monthly, pair_returns, pair_targets, run, spy_exposure, wealth
+from replay import replay
 
 FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
 ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
@@ -596,11 +597,9 @@ def performance():
 
     bt, bench = res['bt'], res['bench_d']
     w_s, w_b = wealth(bt.net), wealth(bench)
-    html(f'<p class="lede">$1 invested in january {p.start[:4]}: <strong>${w_s.iloc[-1]:,.2f}</strong> '
-         f'(s&amp;p 500 tr: <strong>${w_b.iloc[-1]:,.2f}</strong>). net of trading, financing and borrow costs.</p>')
+    replay(res, p, DEFAULTS)                                       # lede + growth of $1 with year-by-year replay
     metrics_table(res['table'].rename(columns={'Strategy (net)': 'portfolio (net)', 'S&P 500 TR': 's&amp;p 500 tr'}),
                   'portfolio (net)')
-    chart('growth of $1, log scale', [('portfolio (net)', w_s, S1), ('s&amp;p 500 tr', w_b, S2)])
     chart('drawdown', [('portfolio (net)', w_s, S1), ('s&amp;p 500 tr', w_b, S2)], kind='drawdown', h=2.2)
     risk_profile(res['table'], res['risk'])
     var_section(monthly(bt.net), monthly(bench))
