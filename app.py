@@ -702,8 +702,8 @@ def month_grid(r, rf_m):
     pc = lambda v: '' if pd.isna(v) else num(round(v, 3))[0].rstrip('%')            # round first: no "−0.0"
     cell = lambda v, full, cls='': f'<td class="{cls} {shade(v, full)}">{pc(v)}</td>' if pd.notna(v) else '<td></td>'
     best, worst = year.ret.idxmax(), year.ret.idxmin()
-    head = ('<tr><th></th>' + ''.join(f'<th>{pd.Timestamp(2000, k, 1):%b}</th>' for k in range(1, 13))
-            + '<th class="sep">Year</th><th>Vol</th><th>Sharpe</th><th>Up</th></tr>')
+    head = ('<tr><th>Year</th>' + ''.join(f'<th>{pd.Timestamp(2000, k, 1):%b}</th>' for k in range(1, 13))
+            + '<th class="sep">Total</th><th>Vol</th><th>Sharpe</th><th>Up</th></tr>')
     rows = ''.join(f'<tr><td>{t}</td>' + ''.join(cell(grid.loc[t].get(k), .08) for k in range(1, 13))
                    + cell(o.ret, .3, 'sep ext' if t in (best, worst) else 'sep')
                    + f'<td>{pc(o.vol)}</td><td>{num(o.sharpe, "x")[0]}</td><td>{o.up:.0%}</td></tr>' for t, o in year.iterrows())
@@ -728,12 +728,6 @@ def hit_rates(r, bench):
 def annual_returns():
     heading('Annual returns')
     p, res = results()
-    html('<h4>Month by month, net of costs (%)</h4>')
-    month_grid(res['bt'].net, res['rf_m'])
-    note('Green months gained, red months lost; the darker, the bigger the move. Year is the compounded return, framed for '
-         'the best and the worst year. Vol and Sharpe are annualised from that year&rsquo;s monthly returns, and Up is the '
-         'share of months with a gain. The last row averages each column over all years.')
-    html('<h4>Against the S&amp;P 500</h4>')
     yr = res['yearly']
     cagr = lambda r: (1 + r).prod() ** (1 / len(yr)) - 1
     rows = ''.join(f'<tr><td>{y}</td>{td(r.Strategy, cls="em")}{td(r["S&P 500 TR"])}<td class="dim">{r["Pair held"]}</td></tr>'
@@ -743,6 +737,11 @@ def annual_returns():
          f'<tr class="total"><td>Cumulative</td>{td((1 + yr.Strategy).prod() - 1)}{td((1 + yr["S&P 500 TR"]).prod() - 1)}<td></td></tr></table>')
     note('Compound growth is lower than the arithmetic average return on the Performance page, because losses and gains '
          'compound unevenly.')
+    html('<h4>Month by month, net of costs (%)</h4>')
+    month_grid(res['bt'].net, res['rf_m'])
+    note('Green months gained, red months lost; the darker, the bigger the move. Total is the compounded return for the year, framed for '
+         'the best and the worst year. Vol and Sharpe are annualised from that year&rsquo;s monthly returns, and Up is the '
+         'share of months with a gain. The last row averages each column over all years.')
     html('<h4>Hit rates</h4>')
     hit_rates(res['bt'].net, res['bench_d'])
 
