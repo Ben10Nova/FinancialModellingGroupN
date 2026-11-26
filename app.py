@@ -240,6 +240,20 @@ img.chart { display: block; width: 100%; height: auto; margin: 6px 0 0; }
 [data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) > [data-testid="stColumn"] { min-width: 0 !important; }
 [data-testid="stHorizontalBlock"]:has([data-testid="stButtonGroup"]) .stButton { display: flex; justify-content: flex-end; }
 
+/* risk profile: paired bars */
+.rg { margin: 18px 0 8px; }
+.rg p.rt { font-size: 13px !important; font-weight: 600; margin: 0 0 6px !important; }
+.rg p.rt span { font-weight: 400; color: var(--muted) !important; font-size: 12px !important; margin-left: 6px; }
+.rr { display: grid; grid-template-columns: 190px 1fr; align-items: center; gap: 14px; padding: 7px 0; }
+.rr span.rl { font-size: 13.5px !important; }
+.rb { display: flex; align-items: center; gap: 10px; height: 18px; }
+.rb i { display: block; height: 12px; border-radius: 6px; background: #0b2648; min-width: 2px; }
+.rb.s i { background: #c9ccd0; }
+.rb em { font-style: normal; font-family: var(--mono) !important; font-size: 12px !important; white-space: nowrap; }
+.rb.s em { color: var(--muted) !important; }
+.stApp [data-testid="stExpander"] details { border: 0 !important; border-radius: 14px !important; background: var(--soft); }
+.stApp [data-testid="stExpander"] summary p { font-size: 13px !important; }
+
 /* investor account */
 .hero { margin: 28px 0 8px; }
 .hero p { margin: 0 !important; }
@@ -251,6 +265,7 @@ img.chart { display: block; width: 100%; height: auto; margin: 6px 0 0; }
 .hero span.neg { color: var(--negative) !important; } .hero span.dim { color: var(--muted) !important; }
 
 @media (max-width: 640px) {
+  .rr { grid-template-columns: 1fr; gap: 4px; }
   h1.bh { font-size: 46px !important; } p.long { font-size: 17px !important; } .stApp h3 { font-size: 28px !important; }
   .st-key-stress [data-testid="stColumn"]:has(p.dim), .st-key-stress [data-testid="stColumn"]:has(p.wh) { display: none !important; }
   .stApp .st-key-stress button[kind="tertiary"] * { font-size: 12.5px !important; line-height: 1.35; }
@@ -483,6 +498,41 @@ def apply_knobs():
     ss['params'] = Params(start=f'{y0}-01-01', end=f'{y1}-12-31', **v)
 
 
+RISK_GROUPS = [  # title, hint, rows: (label, table, row, format, sign)
+    ('a bad month', 'one-month loss, shorter is better', [
+        ('value at risk 95%', 'risk', 'VaR 95%, historical', 'pct', 1), ('expected shortfall 95%', 'risk', 'CVaR 95% (expected shortfall)', 'pct', 1),
+        ('worst month', 'risk', 'Worst month', 'pct', -1)]),
+    ('reward per unit of risk', 'longer is better', [
+        ('sharpe ratio', 'table', 'Sharpe ratio', 'x', 1), ('sortino ratio', 'risk', 'Sortino ratio', 'x', 1),
+        ('calmar ratio', 'risk', 'Calmar ratio', 'x', 1)]),
+    ('up and down markets', 'share of the s&amp;p&rsquo;s average month we went along with', [
+        ('in up months', 'risk', 'Upside capture', 'pct', 1), ('in down months', 'risk', 'Downside capture', 'pct', 1)])]
+
+
+def risk_profile(table, risk):
+    """the risk numbers as paired bars, portfolio vs s&p; the full table sits in an expander"""
+    html('<h4>risk profile</h4>')
+    html(f'<p class="chart-head"><b>monthly returns, net of costs</b><span><i style="background:{S1}"></i>portfolio (net)</span>'
+         f'<span><i style="background:#c9ccd0"></i>s&amp;p 500 tr</span></p>')
+    out = ''
+    for title, hint, rows in RISK_GROUPS:
+        vals = [[sign * {'risk': risk, 'table': table}[t].loc[k, c] for c in ('Strategy (net)', 'S&P 500 TR')]
+                for _, t, k, _, sign in rows]
+        top = max(max(v) for v in vals)
+        out += f'<div class="rg"><p class="rt">{title} <span>{hint}</span></p>'
+        for (label, _, _, kind, _), (p, s) in zip(rows, vals):
+            bar = lambda v, cls: (f'<div class="rb {cls}"><i style="width:calc((100% - 70px) * {max(v, 0) / top:.3f})"></i>'
+                                  f'<em>{num(v, kind)[0]}</em></div>')
+            out += f'<div class="rr"><span class="rl">{label}</span><div>{bar(p, "p")}{bar(s, "s")}</div></div>'
+        out += '</div>'
+    html(out)
+    with st.expander('all risk numbers'):
+        note('monthly returns. value at risk and expected shortfall are one-month losses. cornish-fisher adjusts the normal '
+             'quantile for skew and fat tails. capture: our average return in the s&amp;p&rsquo;s up (down) months, relative to the s&amp;p.')
+        metrics_table(risk[['Strategy (net)', 'S&P 500 TR']].rename(
+            columns={'Strategy (net)': 'portfolio (net)', 'S&P 500 TR': 's&amp;p 500 tr'}), 'portfolio (net)')
+
+
 def var_section(r, b):
     """value at risk and expected shortfall at a chosen confidence level, with the return distribution"""
     html('<h4>value at risk</h4>')
@@ -548,11 +598,7 @@ def performance():
                   'portfolio (net)')
     chart('growth of $1, log scale', [('portfolio (net)', w_s, S1), ('s&amp;p 500 tr', w_b, S2)])
     chart('drawdown', [('portfolio (net)', w_s, S1), ('s&amp;p 500 tr', w_b, S2)], kind='drawdown', h=2.2)
-    html('<h4>risk profile</h4>')
-    note('monthly returns. value at risk and expected shortfall are one-month losses. cornish-fisher adjusts the normal '
-         'quantile for skew and fat tails. capture: our average return in the s&amp;p&rsquo;s up (down) months, relative to the s&amp;p.')
-    metrics_table(res['risk'][['Strategy (net)', 'S&P 500 TR']].rename(
-        columns={'Strategy (net)': 'portfolio (net)', 'S&P 500 TR': 's&amp;p 500 tr'}), 'portfolio (net)')
+    risk_profile(res['table'], res['risk'])
     var_section(monthly(bt.net), monthly(bench))
     rf_d = (get_prices()['^IRX'] / 100 / 252).shift(1).loc[bt.index]
     csv = monthly(pd.DataFrame({'portfolio_net': bt.net, 'portfolio_gross': bt.gross, 'equity_sleeve': res['spy_only'].net,
