@@ -264,7 +264,16 @@ note = lambda t: html(f'<p class="note">{t}</p>')
 ROWS = {'Ann. avg return': 'ann. return', 'Ann. volatility': 'ann. volatility', 'Sharpe ratio': 'sharpe ratio',
         'Alpha (ann.)': 'alpha (ann.)', 'Alpha t-stat': 'alpha t-stat', 'Beta': 'beta',
         'Information ratio': 'information ratio', 'Max drawdown (monthly)': 'max drawdown (monthly)'}
-PCT_ROWS = {'ann. return', 'ann. volatility', 'alpha (ann.)', 'max drawdown (monthly)'}
+ROWS |= {'Skewness': 'skewness', 'Excess kurtosis': 'excess kurtosis', 'VaR 95%, historical': 'value at risk 95%, historical',
+         'VaR 95%, normal': 'value at risk 95%, normal', 'VaR 99%, normal': 'value at risk 99%, normal',
+         'VaR 99%, Cornish-Fisher': 'value at risk 99%, cornish-fisher', 'CVaR 95% (expected shortfall)': 'expected shortfall 95%',
+         'Worst month': 'worst month', 'Positive months': 'positive months', 'Sortino ratio': 'sortino ratio',
+         'Calmar ratio': 'calmar ratio', 'Upside capture': 'upside capture', 'Downside capture': 'downside capture',
+         'Tracking error': 'tracking error', 'Active IR (vs S&P 500 TR)': 'active information ratio',
+         'Alpha t-stat, Newey-West': 'alpha t-stat, newey-west'}
+PCT_ROWS = {'ann. return', 'ann. volatility', 'alpha (ann.)', 'max drawdown (monthly)', 'value at risk 95%, historical',
+            'value at risk 95%, normal', 'value at risk 99%, normal', 'value at risk 99%, cornish-fisher',
+            'expected shortfall 95%', 'worst month', 'positive months', 'upside capture', 'downside capture', 'tracking error'}
 
 
 def num(v, kind='pct'):
@@ -498,6 +507,11 @@ def performance():
                   'portfolio (net)')
     chart('growth of $1, log scale', [('portfolio (net)', w_s, S1), ('s&amp;p 500 tr', w_b, S2)])
     chart('drawdown', [('portfolio (net)', w_s, S1), ('s&amp;p 500 tr', w_b, S2)], kind='drawdown', h=2.2)
+    html('<h4>risk profile</h4>')
+    note('monthly returns. value at risk and expected shortfall are one-month losses. cornish-fisher adjusts the normal '
+         'quantile for skew and fat tails. capture: our average return in the s&amp;p&rsquo;s up (down) months, relative to the s&amp;p.')
+    metrics_table(res['risk'][['Strategy (net)', 'S&P 500 TR']].rename(
+        columns={'Strategy (net)': 'portfolio (net)', 'S&P 500 TR': 's&amp;p 500 tr'}), 'portfolio (net)')
     rf_d = (get_prices()['^IRX'] / 100 / 252).shift(1).loc[bt.index]
     csv = monthly(pd.DataFrame({'portfolio_net': bt.net, 'portfolio_gross': bt.gross, 'equity_sleeve': res['spy_only'].net,
                                 'spread_sleeve': res['pair_only'].net, 'sp500_tr': bench, 'rf': rf_d}))
@@ -663,6 +677,17 @@ def risks():
            (None, 'monthly rebalancing lags sudden volatility spikes; low exposure after crashes misses sharp rebounds.'),
            (None, 'realized daily volatility can exceed the budget in sudden spikes, because exposure is reset monthly.'),
            (None, 'yahoo finance data, fixed cost assumptions, no taxes.')], ordered=False)
+    mc, head = res['mc']
+    html('<h4>10-year outlook</h4>')
+    note('monte carlo: 10,000 paths of 10 years, built from random 12-month blocks of the backtest (portfolio, s&amp;p and '
+         't-bills from the same months). it resamples our own history, so it inherits its optimism: a range of outcomes '
+         'if the next decade looks like the backtest, not a forecast.')
+    kind = lambda i: 'usd' if i.startswith('Wealth') else 'x' if i.startswith('Sharpe') else 'pct'
+    rows = ''.join(f'<tr><td class="label">{i.lower().replace("$1", "$1 invested")}</td>'
+                   + ''.join(td(v, kind(i), 'em' if c == 'Strategy (net)' else '') for c, v in r.items()) + '</tr>'
+                   for i, r in mc.iterrows())
+    html(f'<table class="plain"><tr><th></th><th>portfolio (net)</th><th>s&amp;p 500 tr</th></tr>{rows}</table>')
+    note(f'the portfolio ends ahead of the s&amp;p 500 in {head["beats_sp"]:.0%} of paths.')
 
 
 def photo(ph):
