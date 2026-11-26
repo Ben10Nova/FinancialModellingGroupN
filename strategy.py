@@ -232,7 +232,8 @@ def monte_carlo(r_m, rf_m, bench_m, months=120, paths=10_000, block=12, seed=42)
         'Sharpe ratio: 5th percentile': pct(sharpe, 5), 'Sharpe ratio: 95th percentile': pct(sharpe, 95),
     }, index=['Strategy (net)', 'S&P 500 TR']).T
     head = dict(beats_sp=(end[:, 0] > end[:, 1]).mean(), sharpe_above=(sharpe[:, 0] > sharpe[:, 1]).mean())
-    return table, head
+    fan = dict(q=np.percentile(W, [5, 25, 50, 75, 95], axis=0), paths=W[:40, :, 0])   # for the fan chart
+    return table, head, fan
 
 
 def run(px, p=Params()):
