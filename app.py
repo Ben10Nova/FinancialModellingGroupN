@@ -604,13 +604,11 @@ def with_daily_dd(table, bt, bench):
     return t
 
 
-def performance_view(p, res, table=None):
+def performance_view(p, res):
     bt, bench = res['bt'], res['bench_d']
     w_s, w_b = wealth(bt.net), wealth(bench)
     replay(res, p, DEFAULTS)                                       # lede + growth of $1 with year-by-year replay
-    if table is None:
-        table = with_daily_dd(res['table'], bt, bench).rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP})
-    metrics_table(table, table.columns[0])
+    metrics_table(with_daily_dd(res['table'], bt, bench).rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP}), PF)
     chart('Drawdown, daily', [(PF, w_s, S1), (SP, w_b, S2)], kind='drawdown', h=2.2)
     rf_d = (get_prices()['^IRX'] / 100 / 252).shift(1).loc[bt.index]
     csv = monthly(pd.DataFrame({'portfolio_net': bt.net, 'portfolio_gross': bt.gross, 'equity_sleeve': res['spy_only'].net,
@@ -653,14 +651,17 @@ def assumptions():
     if p == DEFAULTS:
         note('These are the base-case figures shown on every other page. Change a setting above and press Run.')
         table = mine.rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP})
+        lines = [(PF, wealth(bt.net), S1), (SP, wealth(bench), S2)]
     else:                                                          # base case over the same years, so only the rules differ
         base = get_results(CODE, **{**asdict(DEFAULTS), 'start': p.start, 'end': p.end})
         table = pd.DataFrame({'Your assumptions': mine['Strategy (net)'],
                               'Base case': with_daily_dd(base['table'], base['bt'], base['bench_d'])['Strategy (net)'],
                               SP: mine['S&P 500 TR']})
+        lines = [('Your assumptions', wealth(bt.net), S1), ('Base case', wealth(base['bt'].net), S3), (SP, wealth(bench), S2)]
         note(f'Your assumptions against the base case over the same years ({p.start[:4]}&ndash;{p.end[:4]}). Every other page '
              'shows the base case.')
-    performance_view(p, res, table)
+    metrics_table(table, table.columns[0])
+    chart('Growth of $1, log scale', lines)
 
 
 def annual_returns():
