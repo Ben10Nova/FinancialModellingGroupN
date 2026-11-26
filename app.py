@@ -17,6 +17,7 @@ import streamlit.components.v1 as components
 
 from strategy import ASSETS, Params, var_es, load_live, load_prices, monthly, pair_returns, pair_targets, run, spy_exposure, wealth
 from replay import replay
+from landing import landing
 
 FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
 ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
@@ -433,8 +434,11 @@ def results():
 
 # ================================================================ pages
 def home():
-    html(f'<div class="home"><div class="mid"><h1 class="bh">{FUND}</h1><p class="long">{FUND_LONG}<br>Strategies</p>'
-         f'<p class="addr">{ADDRESS}</p></div></div>')
+    try:                                                           # hero at the notebook defaults
+        landing(get_results(CODE, **asdict(DEFAULTS)), FUND, FUND_LONG, ADDRESS)
+    except RuntimeError:                                           # no prices (yahoo limit): plain name and address
+        html(f'<div class="home"><div class="mid"><h1 class="bh">{FUND}</h1><p class="long">{FUND_LONG}<br>Strategies</p>'
+             f'<p class="addr">{ADDRESS}</p></div></div>')
     with st.container(key='foot', horizontal=True, horizontal_alignment='center', gap='medium'):
         if st.button('imprint', type='tertiary'):
             dive('imprint', lambda: html(
