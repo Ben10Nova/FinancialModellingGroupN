@@ -4,6 +4,8 @@ Student number: 70689
 
 Lucas Strobel – Student number: 78177
 
+Noah van Raay – Student number: 81173
+
 ## Backtest notebook
 
 `vol-control_pair_v1.ipynb` reproduces every number in the prospectus. Open it in Google Colab and choose *Runtime → Run all*; data is pulled from the Yahoo Finance API.
