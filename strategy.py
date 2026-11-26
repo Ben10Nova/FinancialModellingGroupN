@@ -162,6 +162,67 @@ def stats(r_m, rf_m, bench_m):
     })
 
 
+def risk_stats(r_m, rf_m, bench_m):
+    """tail risk and client-facing ratios, monthly returns. var/cvar are losses (positive = loss) over one month"""
+    rf, b = rf_m.loc[r_m.index], bench_m.loc[r_m.index]
+    ex, act = r_m - rf, r_m - b
+    w = (1 + r_m).cumprod()
+    S, K = r_m.skew(), r_m.kurt()                               # sample skew, excess kurtosis
+    cf = lambda z: z + (z**2 - 1) * S / 6 + (z**3 - 3 * z) * K / 24 - (2 * z**3 - 5 * z) * S**2 / 36   # cornish-fisher
+    var = lambda z: -(r_m.mean() + z * r_m.std())               # z = normal quantile: -1.645 (95%), -2.326 (99%)
+    q = r_m.quantile(.05)
+    up, dn = b > 0, b < 0
+    hac = sm.OLS(ex, sm.add_constant(b - rf)).fit(cov_type='HAC', cov_kwds={'maxlags': 6})
+    return pd.Series({
+        'Skewness': S,
+        'Excess kurtosis': K,
+        'VaR 95%, historical': -q,
+        'VaR 95%, normal': var(-1.645),
+        'VaR 99%, normal': var(-2.326),
+        'VaR 99%, Cornish-Fisher': var(cf(-2.326)),
+        'CVaR 95% (expected shortfall)': -r_m[r_m <= q].mean(),
+        'Worst month': r_m.min(),
+        'Positive months': (r_m > 0).mean(),
+        'Sortino ratio': ex.mean() / np.sqrt((ex.clip(upper=0) ** 2).mean()) * np.sqrt(12),
+        'Calmar ratio': (w.iloc[-1] ** (12 / len(r_m)) - 1) / -(w / w.cummax() - 1).min(),
+        'Upside capture': r_m[up].mean() / b[up].mean(),
+        'Downside capture': r_m[dn].mean() / b[dn].mean(),
+        'Tracking error': act.std() * np.sqrt(12),
+        'Active IR (vs S&P 500 TR)': act.mean() / act.std() * np.sqrt(12) if act.std() > 0 else np.nan,
+        'Alpha t-stat, Newey-West': hac.tvalues.iloc[0] if act.std() > 0 else np.nan,
+    })
+
+
+def rolling_greeks(r_m, rf_m, bench_m, n=60):
+    """60-month rolling alpha (ann.) and beta, as in the lecture's rolling_greeks"""
+    rf = rf_m.loc[r_m.index]
+    ex, bex = r_m - rf, bench_m.loc[r_m.index] - rf
+    beta = ex.rolling(n).cov(bex) / bex.rolling(n).var()
+    return pd.DataFrame({'alpha': (ex.rolling(n).mean() - beta * bex.rolling(n).mean()) * 12, 'beta': beta}).dropna()
+
+
+def monte_carlo(r_m, rf_m, bench_m, months=120, paths=10_000, block=12, seed=42):
+    """block bootstrap: draw 12-month blocks of history (strategy, s&p, t-bill from the same months) and chain them"""
+    X = np.column_stack([r_m, bench_m.loc[r_m.index], rf_m.loc[r_m.index]])
+    starts = np.random.default_rng(seed).integers(0, len(X) - block + 1, size=(paths, months // block))
+    sim = X[(starts[..., None] + np.arange(block)).reshape(paths, -1)]          # paths x months x 3
+    W = np.cumprod(1 + sim[..., :2], axis=1)
+    dd = (W / np.maximum.accumulate(W, axis=1) - 1).min(axis=1)
+    ex = sim[..., :2] - sim[..., 2:]
+    sharpe = ex.mean(axis=1) / ex.std(axis=1, ddof=1) * np.sqrt(12)
+    end = W[:, -1]
+    pct = lambda a, k: np.percentile(a, k, axis=0)
+    table = pd.DataFrame({
+        'Wealth of $1: 5th percentile': pct(end, 5), 'Wealth of $1: median': pct(end, 50),
+        'Wealth of $1: mean': end.mean(axis=0), 'Wealth of $1: 95th percentile': pct(end, 95),
+        'Probability of a loss': (end < 1).mean(axis=0),
+        'Max drawdown: median': pct(dd, 50), 'Max drawdown: 5th percentile (bad case)': pct(dd, 5),
+        'Sharpe ratio: 5th percentile': pct(sharpe, 5), 'Sharpe ratio: 95th percentile': pct(sharpe, 95),
+    }, index=['Strategy (net)', 'S&P 500 TR']).T
+    head = dict(beats_sp=(end[:, 0] > end[:, 1]).mean(), sharpe_above=(sharpe[:, 0] > sharpe[:, 1]).mean())
+    return table, head
+
+
 def run(px, p=Params()):
     bt = backtest(px, p)
     spy_only = backtest(px, p, pair_size=0)
@@ -175,10 +236,14 @@ def run(px, p=Params()):
     table.loc[['Alpha t-stat', 'Information ratio'], 'S&P 500 TR'] = np.nan
     sleeves = pd.DataFrame({'Vol-managed SPY only': st(spy_only.net), 'Pair only (+ T-bills)': st(pair_only.net),
                             'Combined strategy': st(bt.net)})
+    rt = lambda r: risk_stats(monthly(r), rf_m, bench_m)
+    risk = pd.DataFrame({'Strategy (net)': rt(bt.net), 'Equity sleeve': rt(spy_only.net),
+                         'Spread sleeve': rt(pair_only.net), 'S&P 500 TR': risk_stats(bench_m, rf_m, bench_m)})
     yearly = pd.DataFrame({'Strategy': (1 + bt.net).groupby(bt.index.year).prod() - 1,
                            'S&P 500 TR': (1 + bench_d).groupby(bench_d.index.year).prod() - 1})
     P, chosen, _ = pair_targets(px, p)
     yearly['Pair held'] = [('/'.join(chosen[y]) if p.pair_size > 0 else '–') for y in yearly.index]
-    return dict(bt=bt, spy_only=spy_only, pair_only=pair_only, bench_d=bench_d, table=table, sleeves=sleeves,
+    return dict(bt=bt, spy_only=spy_only, pair_only=pair_only, bench_d=bench_d, table=table, sleeves=sleeves, risk=risk,
+                rolling=rolling_greeks(monthly(bt.net), rf_m, bench_m), mc=monte_carlo(monthly(bt.net), rf_m, bench_m),
                 yearly=yearly, exposure_now=float(spy_exposure(px, p, pair_returns(px, P * p.pair_size)).loc[:p.end].iloc[-1]),
                 pair_now=chosen[max(chosen)])
