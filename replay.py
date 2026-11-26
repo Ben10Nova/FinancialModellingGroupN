@@ -9,46 +9,46 @@ from strategy import wealth
 
 # Market context for each year. Strategy figures come from the current backtest.
 STORIES = {
-    2006: ('a calm start',
-           'quiet markets for most of the year, broken by an emerging-market selloff in may and june.', 0),
-    2007: ('the first cracks',
-           'subprime funds froze in august and the "quant quake" hit hedge funds. the market peaked in october.', 0),
-    2008: ('the financial crisis',
-           'lehman brothers failed in september and the s&p 500 lost 37% over the year.', 1),
-    2009: ('the rebound we missed',
-           'stocks bottomed on march 9 and rallied 65% from the low.', 0),
-    2010: ('flash crash',
-           "the dow briefly fell almost 1,000 points on may 6, days after greece's first bailout.", 0),
-    2011: ('euro crisis',
-           'fears over greek, italian and spanish debt peaked, and the us lost its aaa rating in august.', 1),
-    2012: ('whatever it takes',
-           'in july ecb president draghi promised to do "whatever it takes" to save the euro, and fear left the market.', 0),
-    2013: ('the taper tantrum',
-           'bond yields jumped when the fed hinted at slowing its bond buying, but stocks gained 32%.', 0),
-    2014: ('low volatility',
-           'a calm year, until oil prices slumped in the second half.', 0),
-    2015: ('china shakes markets',
-           'china devalued the yuan on aug 11. a week later the s&p 500 fell 11% in six trading days.', 0),
-    2016: ('brexit and the election',
-           'two shocks that faded fast: the brexit vote in june and the us election in november.', 0),
-    2017: ('the calmest year ever',
-           'record-low volatility. with dividends, the s&p 500 rose in every month.', 0),
-    2018: ('volmageddon',
-           'the vix more than doubled in one day in february. rate hikes and the trade war hit stocks in q4.', 1),
-    2019: ('the fed pivots',
-           'the fed paused in january and cut rates three times from july. stocks gained 31%.', 0),
-    2020: ('covid',
-           'the s&p 500 fell a third in a month, the fastest crash on record.', 1),
-    2021: ('meme stocks',
-           'gamestop grabbed the headlines while the index climbed with few setbacks.', 0),
-    2022: ('the rate shock',
-           'inflation hit a 40-year high and the fed hiked faster than in decades. stocks and bonds fell together.', 1),
-    2023: ('banks wobble, ai takes off',
-           'silicon valley bank failed in march, then the ai rally lifted the biggest tech stocks.', 0),
-    2024: ('the ai boom',
-           'ai optimism kept stocks climbing. the yen carry trade unwound in august.', 0),
-    2025: ('tariffs',
-           'tariffs announced on april 2 cut the s&p 500 12% in four days, 19% from its february peak.', 1),
+    2006: ('A calm start',
+           'Quiet markets for most of the year, broken by an emerging-market selloff in May and June.', 0),
+    2007: ('The first cracks',
+           'Subprime funds froze in August and the "quant quake" hit hedge funds. The market peaked in October.', 0),
+    2008: ('The financial crisis',
+           'Lehman Brothers failed in September and the S&P 500 lost 37% over the year.', 1),
+    2009: ('The rebound we missed',
+           'Stocks bottomed on 9 March and rallied 65% from the low.', 0),
+    2010: ('Flash crash',
+           "The Dow briefly fell almost 1,000 points on 6 May, days after Greece's first bailout.", 0),
+    2011: ('Euro crisis',
+           'Fears over Greek, Italian and Spanish debt peaked, and the US lost its AAA rating in August.', 1),
+    2012: ('Whatever it takes',
+           'In July ECB president Draghi promised to do "whatever it takes" to save the euro, and fear left the market.', 0),
+    2013: ('The taper tantrum',
+           'Bond yields jumped when the Fed hinted at slowing its bond buying, but stocks gained 32%.', 0),
+    2014: ('Low volatility',
+           'A calm year, until oil prices slumped in the second half.', 0),
+    2015: ('China shakes markets',
+           'China devalued the yuan on 11 August. A week later the S&P 500 fell 11% in six trading days.', 0),
+    2016: ('Brexit and the election',
+           'Two shocks that faded fast: the Brexit vote in June and the US election in November.', 0),
+    2017: ('The calmest year on record',
+           'Record-low volatility. With dividends, the S&P 500 rose in every month.', 0),
+    2018: ('Volmageddon',
+           'The VIX more than doubled in one day in February. Rate hikes and the trade war hit stocks in the fourth quarter.', 1),
+    2019: ('The Fed pivots',
+           'The Fed paused in January and cut rates three times from July. Stocks gained 31%.', 0),
+    2020: ('COVID',
+           'The S&P 500 fell a third in a month, the fastest crash on record.', 1),
+    2021: ('Meme stocks',
+           'GameStop grabbed the headlines while the index climbed with few setbacks.', 0),
+    2022: ('The rate shock',
+           'Inflation hit a 40-year high and the Fed hiked faster than in decades. Stocks and bonds fell together.', 1),
+    2023: ('Banks wobble, AI takes off',
+           'Silicon Valley Bank failed in March, then the AI rally lifted the biggest tech stocks.', 0),
+    2024: ('The AI boom',
+           'AI optimism kept stocks climbing. The yen carry trade unwound in August.', 0),
+    2025: ('Tariffs',
+           'Tariffs announced on 2 April cut the S&P 500 12% in four days, 19% from its February peak.', 1),
 }
 
 
@@ -72,12 +72,12 @@ def replay(res, p, defaults):
 
 
 PAGE = r"""<style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
 html,body{margin:0;background:transparent}
 #app{color:#101924;font-family:'IBM Plex Sans',sans-serif;padding:2px 1px 8px}
-.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.mono{font-variant-numeric:tabular-nums lining-nums}
 .lede{font-family:'Newsreader',serif;font-size:19px;line-height:1.45;margin:0 0 22px;max-width:60ch}
-.lede b{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:.92em}
+.lede b{font-weight:600;font-variant-numeric:tabular-nums lining-nums}
 .hd{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid #101924}
 .lg{display:flex;gap:18px;font-size:13.5px;color:#555b63}.lg span{display:flex;align-items:center;gap:7px}
 .lg i{width:20px;height:3px;border-radius:2px;display:inline-block}
@@ -100,24 +100,24 @@ html,body{margin:0;background:transparent}
 .yt{cursor:pointer}
 </style>
 <div id="app">
-  <p class="lede">$1 invested in <span id="l0"></span>: <b id="ls"></b> (s&amp;p 500 tr: <b id="lb"></b>) by <span id="l1"></span>.</p>
-  <div class="hd"><b style="font-weight:500;font-size:15px">growth of $1, log scale</b><div class="lg"><span style="color:#0b2648"><i style="background:#0b2648"></i>portfolio (net)</span><span><i style="background:#848a90"></i>s&amp;p 500 tr</span></div></div>
-  <svg id="sv" viewBox="0 0 640 340" width="100%" style="display:block;margin-top:12px;overflow:visible" role="img" aria-label="growth of $1, equity exposure and years"></svg>
+  <p class="lede">$1 invested in <span id="l0"></span>: <b id="ls"></b> (S&amp;P 500 TR: <b id="lb"></b>) by <span id="l1"></span>.</p>
+  <div class="hd"><b style="font-weight:500;font-size:15px">Growth of $1, log scale</b><div class="lg"><span style="color:#0b2648"><i style="background:#0b2648"></i>Portfolio (net)</span><span><i style="background:#848a90"></i>S&amp;P 500 TR</span></div></div>
+  <svg id="sv" viewBox="0 0 640 340" width="100%" style="display:block;margin-top:12px;overflow:visible" role="img" aria-label="Growth of $1, equity exposure and years"></svg>
   <div class="ctl">
-    <button id="pl">play</button>
-    <div class="start" id="startbox"><span>start</span><input type="range" id="yr" step="1" aria-label="start year"><span id="yv" class="mono" style="font-size:12.5px;min-width:34px"></span></div>
+    <button id="pl">Play</button>
+    <div class="start" id="startbox"><span>Start</span><input type="range" id="yr" step="1" aria-label="start year"><span id="yv" class="mono" style="font-size:12.5px;min-width:34px"></span></div>
   </div>
   <div id="story" aria-live="polite">
     <div class="hd"><b id="sh" style="font-weight:500;font-size:15px"></b><span id="sn" class="mono" style="font-size:12.5px;color:#555b63"></span></div>
     <div id="body"></div>
-    <div id="tgbox" style="margin-top:10px"><button id="tg" aria-expanded="true"><span id="tgt">hide story</span><span id="tgi">&#8963;</span></button></div>
+    <div id="tgbox" style="margin-top:10px"><button id="tg" aria-expanded="true"><span id="tgt">Hide story</span><span id="tgi">&#8963;</span></button></div>
   </div>
-  <p class="foot" id="foot">full calendar-year returns, net of trading, financing and borrow costs.</p>
+  <p class="foot" id="foot">Full calendar-year returns, net of trading, financing and borrow costs.</p>
 </div>
 <script>
 const D=__DATA__,N=D.m.length,S=D.s,B=D.b,E=D.e,YS=D.y;
 const INK='#101924',MUTED='#555b63',S1='#0b2648',S2='#848a90',$=id=>document.getElementById(id),sv=$('sv');
-const MN=['january','february','march','april','may','june','july','august','september','october','november','december'];
+const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const full=i=>MN[+D.m[i].slice(5,7)-1]+' '+D.m[i].slice(0,4);
 const first=y=>D.m.findIndex(s=>+s.slice(0,4)===y);
 const last=y=>{let j=-1;D.m.forEach((s,i)=>{if(+s.slice(0,4)===y)j=i;});return j;};
@@ -128,12 +128,12 @@ const vs=i=>i<st0?1:S[i]/bs,vb=i=>i<st0?1:B[i]/bb,EY=v=>EB-Math.min(v,2.2)/2.2*(
 const many=()=>YS.length-kOf(yr)>10;
 function init(){st0=first(yr);bs=st0?S[st0-1]:1;bb=st0?B[st0-1]:1;let lo=1,hi=1;for(let i=st0;i<N;i++){lo=Math.min(lo,vs(i),vb(i));hi=Math.max(hi,vs(i),vb(i));}
  const a=Math.log(lo/1.1),b=Math.log(hi*1.1);X=i=>L+(i-st0+1)/(N-st0)*(W-L-6);YY=v=>GT+(b-Math.log(v))/(b-a)*(GB-GT);
- let t='';[0.5,1,2,5,10,20,30,50,100].filter(v=>v>=lo/1.1&&v<=hi*1.1).forEach(v=>{t+=`<text x="${L-10}" y="${YY(v)+4}" text-anchor="end" font-family="IBM Plex Mono" font-size="11.5" fill="${MUTED}">$${v}</text>`;});
+ let t='';[0.5,1,2,5,10,20,30,50,100].filter(v=>v>=lo/1.1&&v<=hi*1.1).forEach(v=>{t+=`<text x="${L-10}" y="${YY(v)+4}" text-anchor="end" font-family="IBM Plex Sans" font-size="11.5" fill="${MUTED}">$${v}</text>`;});
  t+=`<line x1="${L}" x2="${W}" y1="${YY(1)}" y2="${YY(1)}" stroke="${INK}"/>`;
- t+=`<text x="${L-10}" y="${ET+10}" text-anchor="end" font-family="IBM Plex Mono" font-size="11.5" fill="${MUTED}">2x</text><text x="${L-10}" y="${EB+3}" text-anchor="end" font-family="IBM Plex Mono" font-size="11.5" fill="${MUTED}">0x</text><text x="${L}" y="${ET-8}" font-family="IBM Plex Sans" font-size="12" fill="${MUTED}">equity exposure</text><line x1="${L}" x2="${W}" y1="${EB}" y2="${EB}" stroke="${INK}"/>`;
+ t+=`<text x="${L-10}" y="${ET+10}" text-anchor="end" font-family="IBM Plex Sans" font-size="11.5" fill="${MUTED}">2x</text><text x="${L-10}" y="${EB+3}" text-anchor="end" font-family="IBM Plex Sans" font-size="11.5" fill="${MUTED}">0x</text><text x="${L}" y="${ET-8}" font-family="IBM Plex Sans" font-size="12" fill="${MUTED}">Equity exposure</text><line x1="${L}" x2="${W}" y1="${EB}" y2="${EB}" stroke="${INK}"/>`;
  const bw=(W-L-6)/(N-st0);let eb='';for(let i=st0;i<N;i++)eb+=`<rect class="eb" data-i="${i}" x="${X(i)-bw+.3}" y="${EY(E[i])}" width="${Math.max(bw-.6,.5)}" height="${EB-EY(E[i])}" fill="#d0d3d6" opacity="0"/>`;
  let ax='';YS.forEach((o,k)=>{if(o.y<yr)return;const x0=X(first(o.y)-1),x1=X(last(o.y));
-  ax+=`<g class="yt" data-k="${k}"><rect x="${x0}" y="${GT}" width="${x1-x0}" height="${AX+10-GT}" fill="transparent"/><line id="u${k}" x1="${x0+1}" x2="${x1-1}" y1="${EB+5}" y2="${EB+5}" stroke="${INK}" stroke-width="2" opacity="0"/><text id="t${k}" x="${(x0+x1)/2}" y="${AX}" text-anchor="middle" font-family="IBM Plex Mono" font-size="11.5" fill="${MUTED}">${o.y}</text></g>`;});
+  ax+=`<g class="yt" data-k="${k}"><rect x="${x0}" y="${GT}" width="${x1-x0}" height="${AX+10-GT}" fill="transparent"/><line id="u${k}" x1="${x0+1}" x2="${x1-1}" y1="${EB+5}" y2="${EB+5}" stroke="${INK}" stroke-width="2" opacity="0"/><text id="t${k}" x="${(x0+x1)/2}" y="${AX}" text-anchor="middle" font-family="IBM Plex Sans" font-size="11.5" fill="${MUTED}">${o.y}</text></g>`;});
  sv.innerHTML=`<rect id="hl" y="${GT}" height="${EB-GT}" fill="#f4f4f2" opacity="0"/>${t}${eb}<path id="pb" fill="none" stroke="${S2}" stroke-width="1.5" stroke-linejoin="round"/><path id="ps" fill="none" stroke="${S1}" stroke-width="2.2" stroke-linejoin="round"/>${ax}`;
  sv.querySelectorAll('.yt').forEach(g=>{g.onclick=()=>{stop();show(+g.dataset.k,true);};});
  $('l0').textContent=full(st0);}
@@ -146,24 +146,24 @@ function mark(k){const y=YS[k].y,a=X(Math.max(first(y),st0)-1),b=X(last(y));$('h
 const pct=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1)+'%';
 function story(k){const e=YS[k],s=$('story');s.style.opacity=0;setTimeout(()=>{
  $('sh').innerHTML=`${e.y}${e.t?` &nbsp;<span style="font-weight:400">${e.t}</span>`:''}`;
- $('sn').innerHTML=`portfolio <b style="font-weight:500;color:${S1}">${pct(e.pf)}</b> &nbsp; s&amp;p 500 ${pct(e.sp)} &nbsp; exposure ${e.ex.toFixed(2)}x`;
- $('body').innerHTML=e.h?`<div class="r" style="border-bottom:0"><span class="k">what happened</span><span>${e.h}</span></div>`:'';
+ $('sn').innerHTML=`Portfolio <b style="font-weight:500;color:${S1}">${pct(e.pf)}</b> &nbsp; S&amp;P 500 ${pct(e.sp)} &nbsp; Exposure ${e.ex.toFixed(2)}x`;
+ $('body').innerHTML=e.h?`<div class="r" style="border-bottom:0"><span class="k">What happened</span><span>${e.h}</span></div>`:'';
  s.style.opacity=1;},180);}
-function toggle(){open=!open;$('body').classList.toggle('closed',!open);$('tgt').textContent=open?'hide story':'show story';$('tgi').innerHTML=open?'&#8963;':'&#8964;';$('tg').setAttribute('aria-expanded',open);setTimeout(fit,450);}
+function toggle(){open=!open;$('body').classList.toggle('closed',!open);$('tgt').textContent=open?'Hide story':'Show story';$('tgi').innerHTML=open?'&#8963;':'&#8964;';$('tg').setAttribute('aria-expanded',open);setTimeout(fit,450);}
 function show(k,jump){sel=k;if(jump)cur=last(YS[k].y);render(cur);mark(k);story(k);}
 function playYear(){if(!on)return;const k=sel,end=last(YS[k].y);
  (function draw(){if(!on)return;if(cur<end){cur++;render(cur);tm=setTimeout(draw,180);return;}
   const wait=D.stories&&open?(YS[k].c?6000:4200):1100;
   hd=setTimeout(()=>{if(!on)return;if(k>=YS.length-1){stop();return;}sel=k+1;mark(sel);story(sel);render(cur);setTimeout(playYear,300);},wait);})();}
-function play(){if(on){stop();return;}on=true;$('pl').textContent='pause';
+function play(){if(on){stop();return;}on=true;$('pl').textContent='Pause';
  if(cur>=N-1){cur=st0-1;sel=kOf(yr);}else sel=kOf(yOf(Math.min(cur+1,N-1)));
  render(cur);mark(sel);story(sel);setTimeout(playYear,400);}
-function stop(){on=false;clearTimeout(tm);clearTimeout(hd);$('pl').textContent='play';}
+function stop(){on=false;clearTimeout(tm);clearTimeout(hd);$('pl').textContent='Play';}
 $('pl').onclick=play;$('tg').onclick=toggle;
 const ys=$('yr');ys.min=YS[0].y;ys.max=YS[YS.length-1].y-(YS.length>1?1:0);ys.value=yr;$('yv').textContent=yr;
 if(YS.length<2)$('startbox').style.display='none';
 ys.oninput=e=>{yr=+e.target.value;$('yv').textContent=yr;stop();init();cur=N-1;sel=Math.max(sel,kOf(yr));render(cur);mark(sel);story(sel);};
-if(!D.stories){$('tgbox').style.display='none';$('foot').textContent='full calendar-year returns, net of trading, financing and borrow costs. the year stories describe the notebook defaults: reset to see them.';}
+if(!D.stories){$('tgbox').style.display='none';$('foot').textContent='Full calendar-year returns, net of trading, financing and borrow costs. The year stories describe the base case: reset the assumptions to see them.';}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();play();}
  if(e.key==='ArrowRight'){stop();show(Math.min(YS.length-1,sel+1),true);}if(e.key==='ArrowLeft'){stop();show(Math.max(kOf(yr),sel-1),true);}});
 const fit=()=>{try{const h=Math.ceil($('app').getBoundingClientRect().height)+4+'px';frameElement.style.height=h;const box=frameElement.parentElement;if(box){box.style.height=h;box.style.minHeight=h;box.style.flex="0 0 "+h;}}catch(e){}};  // the streamlit wrapper keeps the height passed from python, so resize it too
