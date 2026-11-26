@@ -42,7 +42,7 @@ CRISES = [  # s&p 500 peak and trough closes, what happened, what it shows
      'a slow grind lower, so exposure came down month by month as volatility picked up.')]
 UNSPLASH = 'https://images.unsplash.com/photo-{}?w=480&h=600&fit=crop&crop=faces&q=75'
 TEAM = [('lucas s', '[title]', 'assets/lucas_strobel.jpg'), ('ben s', '[title]', '1500648767791-00dcc994a43e'),
-        ('katha g', '[title]', '1494790108377-be9c29b29330'), ('noah vr', '[title]', '1472099645785-5658abf4ff4e'),
+        ('katha g', '[title]', '1494790108377-be9c29b29330'), ('noah vr', '[title]', 'assets/noah_vr.jpg'),
         ('henrik t', '[title]', '1519085360753-af0119f7cbe7'), ('chris w', '[title]', '1506794778202-cad84cf45f1d')]
 # photo: a file in assets/, a full image url, or an unsplash id (stock placeholder until the real photo is in)
 BIO = '[short bio: background, role at mvp strategies and areas of focus. two to three sentences.]'
