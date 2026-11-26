@@ -55,7 +55,7 @@ h1{font-family:'Newsreader',serif;font-weight:500;font-size:84px;line-height:1;m
     <h1 class="fade">__FUND__</h1>
     <p class="tag fade">US equity growth for the return-seeking part of a pension scheme, with drawdowns a funding ratio can live with.</p>
     <div class="card fade" id="card"></div>
-    <div class="btns fade"><button class="cta" data-go="performance">See the performance &rarr;</button><button class="sec" data-go="thesis">Investment approach</button></div>
+    <div class="btns fade"><button class="cta" data-go="assumptions">Test your own assumptions &rarr;</button><button class="sec" data-go="performance">See the performance</button></div>
   </div>
   <svg id="wm" viewBox="0 0 680 220" role="img" aria-label="Growth of $1, portfolio against the S&amp;P 500"></svg>
   <p class="ft fade" id="ft"></p>

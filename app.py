@@ -99,7 +99,7 @@ html, body, .stApp, .stApp *:where(:not([data-testid="stIconMaterial"])), [role=
 [data-testid="stDecoration"], footer, #MainMenu, [data-testid="stHeaderActionElements"], [data-testid="stElementToolbar"],
 [data-testid="stStatusWidget"] { display: none !important; }
 [data-testid="stHeader"] { background: var(--paper) !important; border-bottom: 1px solid var(--hairline); }
-.block-container { max-width: 860px; padding: 6rem 1.25rem 6rem; }
+.block-container { max-width: 860px; padding: 3.6rem 1.25rem 6rem; }
 p, li, label { font-size: 15px !important; line-height: 1.6; }
 
 /* menu = sidebar; the expand control becomes three bars */
@@ -281,6 +281,17 @@ img.chart.m { display: none; }
 [data-testid="stTopNavLink"][aria-current="page"] * { font-weight: 600 !important; }
 [data-baseweb="popover"] a, [data-baseweb="popover"] a * { text-decoration: none !important; font-size: 14px !important; }
 
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(1) { order: 0 !important; }   /* Overview */
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(2) { order: 1 !important; }   /* Test your assumptions */
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(4) { order: 2 !important; }   /* Strategy */
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(5) { order: 3 !important; }   /* Results */
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(6) { order: 4 !important; }   /* Backtest & analysis */
+[data-testid="stTopNavLink"][href$="/assumptions"] { background: var(--ink) !important; border-radius: 980px !important; padding: 0 16px !important; }
+[data-testid="stTopNavLink"][href$="/assumptions"] * { color: var(--paper) !important; font-weight: 500 !important; }
+[data-testid="stSidebarNav"] a[href$="/assumptions"] * { font-weight: 600 !important; }
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(3) { order: 5 !important; }   /* Team */
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(n+7) { order: 6 !important; }
+
 /* sample mandate report */
 .hero { margin: 28px 0 8px; }
 .hero p { margin: 0 !important; }
@@ -435,8 +446,9 @@ def get_live(target_vol=DEFAULTS.target_vol, code=CODE):
     return run(px, Params(start=DEMO_START, end=str(px.index[-1].date()), target_vol=target_vol)), px
 
 
-def results():
-    p = st.session_state.get('params', DEFAULTS)
+def results(custom=False):
+    """the base case on every page; only Your assumptions uses the visitor's settings"""
+    p = st.session_state.get('params', DEFAULTS) if custom else DEFAULTS
     try:
         return p, get_results(CODE, **asdict(p))
     except RuntimeError as e:
@@ -592,16 +604,13 @@ def with_daily_dd(table, bt, bench):
     return t
 
 
-def performance():
-    heading('Performance')
-    ss = st.session_state
-    p, res = results()
-    if p != DEFAULTS:
-        note('Custom assumptions: these figures differ from the base case, and every page now uses them.')
+def performance_view(p, res, table=None):
     bt, bench = res['bt'], res['bench_d']
     w_s, w_b = wealth(bt.net), wealth(bench)
     replay(res, p, DEFAULTS)                                       # lede + growth of $1 with year-by-year replay
-    metrics_table(with_daily_dd(res['table'], bt, bench).rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP}), PF)
+    if table is None:
+        table = with_daily_dd(res['table'], bt, bench).rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP})
+    metrics_table(table, table.columns[0])
     chart('Drawdown, daily', [(PF, w_s, S1), (SP, w_b, S2)], kind='drawdown', h=2.2)
     rf_d = (get_prices()['^IRX'] / 100 / 252).shift(1).loc[bt.index]
     csv = monthly(pd.DataFrame({'portfolio_net': bt.net, 'portfolio_gross': bt.gross, 'equity_sleeve': res['spy_only'].net,
@@ -609,23 +618,49 @@ def performance():
     st.download_button('Download monthly returns (CSV)', csv.to_csv(index_label='month', float_format='%.6f'),
                        file_name=f'monthly_returns_{p.start[:4]}_{p.end[:4]}.csv', mime='text/csv', type='tertiary')
 
-    with st.expander('Change the assumptions', expanded=p != DEFAULTS):
-        if 's_target_vol' not in ss:                               # widget state is dropped when the page is left
-            load_knobs(ss.get('params', DEFAULTS))
-        with st.container(key='knobs'):
-            for pair in (KNOBS[i:i + 2] for i in range(0, len(KNOBS), 2)):
-                for col, (f, label, lo, hi, step, _, fmt) in zip(st.columns(2, gap='large'), pair):
-                    a, b = col.columns([3, 1.2], vertical_alignment='bottom')
-                    a.slider(label, lo, hi, step=step, format=fmt, key=f's_{f}', on_change=sync, args=(f's_{f}', f'n_{f}'))
-                    b.number_input(label, lo, hi, step=step, format=fmt, key=f'n_{f}', label_visibility='collapsed',
-                                   on_change=sync, args=(f'n_{f}', f's_{f}'))
-            st.slider('Years', 2006, 2025, key='years')
-            b = st.columns([4, 2, 1], vertical_alignment='center')
-            b[0].checkbox('Include the sector spread', key='pair_on')
-            b[1].button('Reset to the base case', type='tertiary', on_click=load_knobs, args=(DEFAULTS, True))
-            b[2].button('Run', type='primary', on_click=apply_knobs)
-        if ss.pop('bad_years', False):
-            note('The end year must be after the start year.')
+
+def performance():
+    heading('Performance')
+    p, res = results()
+    performance_view(p, res)
+    html('<p style="margin-top:18px"><a href="/assumptions" target="_self">Test your own assumptions &rarr;</a></p>')
+
+
+def assumptions():
+    heading('Test your assumptions')
+    html('<p class="lede">Change any assumption, press Run, and see how the result compares with the base case and the '
+         'S&amp;P 500.</p>')
+    ss = st.session_state
+    if 's_target_vol' not in ss:                                   # widget state is dropped when the page is left
+        load_knobs(ss.get('params', DEFAULTS))
+    with st.container(key='knobs'):
+        for pair in (KNOBS[i:i + 2] for i in range(0, len(KNOBS), 2)):
+            for col, (f, label, lo, hi, step, _, fmt) in zip(st.columns(2, gap='large'), pair):
+                a, b = col.columns([3, 1.2], vertical_alignment='bottom')
+                a.slider(label, lo, hi, step=step, format=fmt, key=f's_{f}', on_change=sync, args=(f's_{f}', f'n_{f}'))
+                b.number_input(label, lo, hi, step=step, format=fmt, key=f'n_{f}', label_visibility='collapsed',
+                               on_change=sync, args=(f'n_{f}', f's_{f}'))
+        st.slider('Years', 2006, 2025, key='years')
+        b = st.columns([4, 2, 1], vertical_alignment='center')
+        b[0].checkbox('Include the sector spread', key='pair_on')
+        b[1].button('Reset to the base case', type='tertiary', on_click=load_knobs, args=(DEFAULTS, True))
+        b[2].button('Run', type='primary', on_click=apply_knobs)
+    if ss.pop('bad_years', False):
+        note('The end year must be after the start year.')
+    p, res = results(custom=True)
+    bt, bench = res['bt'], res['bench_d']
+    mine = with_daily_dd(res['table'], bt, bench)
+    if p == DEFAULTS:
+        note('These are the base-case figures shown on every other page. Change a setting above and press Run.')
+        table = mine.rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP})
+    else:                                                          # base case over the same years, so only the rules differ
+        base = get_results(CODE, **{**asdict(DEFAULTS), 'start': p.start, 'end': p.end})
+        table = pd.DataFrame({'Your assumptions': mine['Strategy (net)'],
+                              'Base case': with_daily_dd(base['table'], base['bt'], base['bench_d'])['Strategy (net)'],
+                              SP: mine['S&P 500 TR']})
+        note(f'Your assumptions against the base case over the same years ({p.start[:4]}&ndash;{p.end[:4]}). Every other page '
+             'shows the base case.')
+    performance_view(p, res, table)
 
 
 def annual_returns():
@@ -762,7 +797,7 @@ def rule_costs():
             f'{p.fin_spread * 1e4:.0f} bp.',
             'Every return on this site is after these costs.',
             f'We trade about <span class="fig">{turn:.0f}x</span> our capital a year, mostly in the spread legs, so costs matter. '
-            'Raise the trading cost under "Change the assumptions" on the Performance page to see how much.']
+            'Raise the trading cost under Test your assumptions to see how much.']
 
 
 def rules():
@@ -811,11 +846,12 @@ def fan_chart(fan):
          'bold line is the median. Grey: the S&amp;P 500 median, dashed: its 5% and 95% levels.')
 
 
-def risks():
-    heading('Risks')
+def risk():
+    heading('Risk')
     p, res = results()
     t = with_daily_dd(res['table'], res['bt'], res['bench_d'])
     mdd_m, mdd_d = (num(t.loc[k, 'Strategy (net)'])[0] for k in ('Max drawdown (monthly)', 'Max drawdown (daily)'))
+    html('<h4>Main risks</h4>')
     items([(None, f'Leverage and short selling are required. Gross exposure reached {res["bt"].gross_exposure.max():.1f}x in '
                   'the backtest, and a scheme&rsquo;s rules may not allow this directly (see the term sheet under Investment approach).'),
            (None, f'The largest fall was {mdd_m} measured at month-ends and {mdd_d} measured daily.'),
@@ -827,16 +863,19 @@ def risks():
            (None, 'The portfolio is in US dollars and not hedged, which matters for a euro or sterling scheme.'),
            (None, 'Data from Yahoo Finance, fixed cost assumptions, no taxes and no management fee.')], ordered=False)
 
-    html('<h4>Risk profile</h4>')
+    html('<h4>Risk in numbers</h4>')
     note('Monthly returns, net of costs. Value at risk and expected shortfall are one-month losses. Cornish-Fisher adjusts the '
          'normal estimate for skew and fat tails. Capture compares our average return in the S&amp;P 500&rsquo;s rising (falling) '
          'months with the S&amp;P 500&rsquo;s own.')
     metrics_table(res['risk'][['Strategy (net)', 'S&P 500 TR']].rename(columns={'Strategy (net)': PF, 'S&P 500 TR': SP}), PF)
 
+
+def monte_carlo():
+    heading('Monte Carlo simulation')
+    p, res = results()
     if res['mc'] is None:
         return
     mc, head, fan = res['mc']
-    html('<h4>10-year simulation (resampled backtest)</h4>')
     html('<p>We built 10,000 ten-year paths from random 12-month blocks of the backtest, taking the portfolio, the S&amp;P 500 '
          'and T-bills from the same months. Because it resamples our own history, the simulation inherits its optimism. Read it '
          'as the range of outcomes if the next decade looks like the backtest, not as a forecast.</p>')
@@ -848,6 +887,7 @@ def risks():
     html(f'<table class="plain"><tr><th></th><th>{PF}</th><th>{SP}</th></tr>{rows}</table>')
     note(f'The portfolio ends ahead of the S&amp;P 500 in {head["beats_sp"]:.0%} of paths.')
     fan_chart(fan)
+
 
 
 def photo(ph):
@@ -1050,12 +1090,15 @@ Object.assign(f.style, {{display: 'block', opacity: 1, position: 'fixed', inset:
 
 
 page = lambda f, t, u: st.Page(f, title=t, url_path=u)
-nav = st.navigation({'': [st.Page(home, title='Overview', default=True)],
+nav = st.navigation({'': [st.Page(home, title='Overview', default=True), page(assumptions, 'Test your assumptions', 'assumptions'),
+                          page(team, 'Team', 'team')],              # shown after the groups, see the css order rules
                      'Strategy': [page(thesis, 'Investment approach', 'thesis'), page(rules, 'Rules', 'rules')],
-                     'Results': [page(performance, 'Performance', 'performance'), page(annual_returns, 'Annual returns', 'annual-returns'),
-                                 page(attribution, 'Attribution', 'attribution'), page(live_2026, 'Live 2026', 'live-2026')],
-                     'Risk': [page(stress_tests, 'Stress tests', 'stress-tests'), page(risks, 'Risks', 'risks')],
-                     'About': [page(team, 'Team', 'team'), page(mandate_report, 'Sample mandate report', 'mandate-report')]},
+                     'Results': [page(performance, 'Performance', 'performance'), page(live_2026, 'Live 2026', 'live-2026'),
+                                 page(mandate_report, 'Sample mandate report', 'mandate-report')],
+                     'Backtest & analysis': [page(annual_returns, 'Annual returns', 'annual-returns'),
+                                             page(attribution, 'Attribution', 'attribution'), page(risk, 'Risk', 'risk'),
+                                             page(stress_tests, 'Stress tests', 'stress-tests'),
+                                             page(monte_carlo, 'Monte Carlo', 'monte-carlo')]},
                     position='top')
 loader(f"{nav.url_path}|{st.session_state.get('params', DEFAULTS)}")
 nav.run()
