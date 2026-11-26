@@ -45,7 +45,7 @@ UNSPLASH = 'https://images.unsplash.com/photo-{}?w=480&h=600&fit=crop&crop=faces
 BIO = '[short bio: background, role at mvp strategies and areas of focus. two to three sentences.]'
 TEAM = [  # name, title, photo, bio (defaults to BIO above), linkedin url ('' hides the icon)
     ('lucas s', '[title]', 'assets/lucas_strobel.jpg', BIO, ''),
-    ('ben s', '[title]', '1500648767791-00dcc994a43e', BIO, ''),
+    ('ben s', '[title]', 'assets/ben_s.jpg', BIO, ''),
     ('katha g', '[title]', '1494790108377-be9c29b29330', BIO, ''),
     ('noah vr', '[title]', 'assets/noah_vr.jpg', BIO, ''),
     ('henrik t', '[title]', 'assets/henrik_trillhaas.jpg', BIO, ''),
