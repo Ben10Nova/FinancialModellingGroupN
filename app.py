@@ -10,11 +10,12 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from matplotlib.dates import MonthLocator, num2date
 from matplotlib.ticker import FuncFormatter, NullLocator
+import numpy as np
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from strategy import ASSETS, Params, load_live, load_prices, monthly, pair_returns, pair_targets, run, spy_exposure, wealth
+from strategy import ASSETS, Params, var_es, load_live, load_prices, monthly, pair_returns, pair_targets, run, spy_exposure, wealth
 
 FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
 ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
@@ -301,6 +302,14 @@ def metrics_table(df, bold):
     html(f'<table class="plain">{head}{body}</table>')
 
 
+def show(fig):
+    fig.tight_layout(pad=.3)
+    buf = BytesIO()                            # inline png: no separate media file that a redeploy or reload can lose
+    fig.savefig(buf, format='png')
+    html(f'<img class="chart" alt="" src="data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}">')
+    plt.close(fig)
+
+
 def chart(title, series, kind='growth', h=2.9, bands=()):
     legend = ''.join(f'<span><i style="background:{c}"></i>{n}</span>' for n, _, c in series)
     html(f'<p class="chart-head"><b>{title}</b>{legend}</p>')
@@ -329,11 +338,7 @@ def chart(title, series, kind='growth', h=2.9, bands=()):
             ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'${v:,.{dec}f}'))
         ax.xaxis.set_major_locator(MonthLocator())
         ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: num2date(v).strftime('%b').lower()))
-    fig.tight_layout(pad=.3)
-    buf = BytesIO()                            # inline png: no separate media file that a redeploy or reload can lose
-    fig.savefig(buf, format='png')
-    html(f'<img class="chart" alt="" src="data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}">')
-    plt.close(fig)
+    show(fig)
 
 
 def items(rows, ordered=True):
@@ -478,6 +483,40 @@ def apply_knobs():
     ss['params'] = Params(start=f'{y0}-01-01', end=f'{y1}-12-31', **v)
 
 
+def var_section(r, b):
+    """value at risk and expected shortfall at a chosen confidence level, with the return distribution"""
+    html('<h4>value at risk</h4>')
+    lvl = st.slider('confidence level', 90.0, 99.5, 95.0, 0.5, format='%.1f%%', key='var_level') / 100
+    v = pd.DataFrame({'portfolio (net)': var_es(r, lvl), 's&amp;p 500 tr': var_es(b, lvl)})
+    p, s = v['portfolio (net)'], v['s&amp;p 500 tr']
+    html(f'<p class="lede">in 1 month out of {1 / (1 - lvl):.0f}, the portfolio lost more than <strong>{num(p.iloc[0])[0]}</strong> '
+         f'(s&amp;p 500: <strong>{num(s.iloc[0])[0]}</strong>). in those months the average loss was '
+         f'<strong>{num(p.iloc[3])[0]}</strong> (s&amp;p 500: <strong>{num(s.iloc[3])[0]}</strong>).</p>')
+    rows = ''.join(f'<tr><td class="label">{i.lower()}</td>{td(x, cls="em")}{td(y)}</tr>' for i, x, y in zip(v.index, p, s))
+    html(f'<table class="plain"><tr><th>one-month loss at {lvl:.1%}</th><th>portfolio (net)</th><th>s&amp;p 500 tr</th></tr>'
+         f'{rows}</table>')
+    period = f'{r.index[0]:%Y}–{r.index[-1]:%Y}'
+    note(f'historical: the loss exceeded in {1 - lvl:.1%} of the months {period}. normal: assumes a bell curve. cornish-fisher: bell curve '
+         f'corrected for skew and fat tails. expected shortfall: average loss in the months beyond the historical var. '
+         f'{(r <= -p.iloc[0]).sum()} of {len(r)} months are in the tail, so far-out levels rest on very few months.')
+    html(f'<p class="chart-head"><b>monthly returns, {period}</b><span><i style="background:{S1}"></i>portfolio (net)</span>'
+         f'<span><i style="background:{S2}"></i>s&amp;p 500 tr</span></p>')
+    fig, ax = plt.subplots(figsize=(8, 2.9))
+    lo, hi = min(r.min(), b.min()), max(r.max(), b.max())
+    bins = np.arange(np.floor(lo * 100) - 1, np.ceil(hi * 100) + 2) / 100
+    ax.hist(b, bins=bins, histtype='step', color=S2, lw=1.2)
+    ax.hist(r, bins=bins, color=S1, alpha=.85, rwidth=.85)
+    for x, c in ((p, S1), (s, S2)):
+        ax.axvline(-x.iloc[0], color=c, lw=1.3)                               # value at risk
+        ax.axvline(-x.iloc[3], color=c, lw=1.3, ls='--')                      # expected shortfall
+    ax.axvspan(lo - .01, -p.iloc[0], color=S1, alpha=.06, lw=0)
+    ax.set_xlim(lo - .01, hi + .01)
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.0%}'.replace('-', '−')))
+    ax.set_ylabel('months', color=MUTED)
+    show(fig)
+    note('solid line: value at risk (historical). dashed: expected shortfall. shaded: the portfolio&rsquo;s tail.')
+
+
 def performance():
     heading('performance')
     ss = st.session_state
@@ -514,6 +553,7 @@ def performance():
          'quantile for skew and fat tails. capture: our average return in the s&amp;p&rsquo;s up (down) months, relative to the s&amp;p.')
     metrics_table(res['risk'][['Strategy (net)', 'S&P 500 TR']].rename(
         columns={'Strategy (net)': 'portfolio (net)', 'S&P 500 TR': 's&amp;p 500 tr'}), 'portfolio (net)')
+    var_section(monthly(bt.net), monthly(bench))
     rf_d = (get_prices()['^IRX'] / 100 / 252).shift(1).loc[bt.index]
     csv = monthly(pd.DataFrame({'portfolio_net': bt.net, 'portfolio_gross': bt.gross, 'equity_sleeve': res['spy_only'].net,
                                 'spread_sleeve': res['pair_only'].net, 'sp500_tr': bench, 'rf': rf_d}))

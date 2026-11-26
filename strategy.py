@@ -162,6 +162,18 @@ def stats(r_m, rf_m, bench_m):
     })
 
 
+def var_es(r_m, level):
+    """one-month value at risk at any confidence level (historical, normal, cornish-fisher) and historical expected
+    shortfall. losses are positive. same formulas as risk_stats, which fixes the level at 95% / 99%"""
+    from scipy.stats import norm
+    S, K, z = r_m.skew(), r_m.kurt(), norm.ppf(1 - level)
+    z_cf = z + (z**2 - 1) * S / 6 + (z**3 - 3 * z) * K / 24 - (2 * z**3 - 5 * z) * S**2 / 36
+    q = r_m.quantile(1 - level)
+    return pd.Series({'VaR, historical': -q, 'VaR, normal': -(r_m.mean() + z * r_m.std()),
+                      'VaR, Cornish-Fisher': -(r_m.mean() + z_cf * r_m.std()),
+                      'Expected shortfall': -r_m[r_m <= q].mean()})
+
+
 def risk_stats(r_m, rf_m, bench_m):
     """tail risk and client-facing ratios, monthly returns. var/cvar are losses (positive = loss) over one month"""
     rf, b = rf_m.loc[r_m.index], bench_m.loc[r_m.index]
