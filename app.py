@@ -166,6 +166,22 @@ table.plain td.dim { color: var(--muted) !important; }
 table.plain tr.total td { font-weight: 600; border-bottom: 0 !important; }
 table.plain tr.first td { border-top: 1px solid var(--ink) !important; }
 table.plain.compact td { padding-top: 4px; padding-bottom: 4px; }
+.scroll { overflow-x: auto; }
+table.plain.heat { min-width: 640px; }
+table.plain.heat th, table.plain.heat td { font-size: 12px !important; padding: 5px 5px; text-align: right; border-bottom: 1px solid #fff !important; }
+table.plain.heat th.sep, table.plain.heat td.sep { padding-left: 12px; }
+table.plain.heat td.ext { font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--ink); }
+table.plain.heat tr.total td { border-top: 1px solid var(--ink) !important; }
+table.plain.heat td.g1 { background: rgba(31,94,64,0.09) !important; }
+table.plain.heat td.g2 { background: rgba(31,94,64,0.18) !important; }
+table.plain.heat td.g3 { background: rgba(31,94,64,0.27) !important; }
+table.plain.heat td.g4 { background: rgba(31,94,64,0.36) !important; }
+table.plain.heat td.g5 { background: rgba(31,94,64,0.45) !important; }
+table.plain.heat td.r1 { background: rgba(140,45,43,0.09) !important; }
+table.plain.heat td.r2 { background: rgba(140,45,43,0.18) !important; }
+table.plain.heat td.r3 { background: rgba(140,45,43,0.27) !important; }
+table.plain.heat td.r4 { background: rgba(140,45,43,0.36) !important; }
+table.plain.heat td.r5 { background: rgba(140,45,43,0.45) !important; }
 table.plain.terms td { text-align: left; white-space: normal; font-size: 14px !important; padding: 9px 0 9px 14px; vertical-align: top; }
 table.plain.terms td.label { width: 28%; font-weight: 500; padding-left: 0; }
 
@@ -669,9 +685,55 @@ def assumptions():
     chart('Growth of $1, log scale', lines)
 
 
+def shade(v, full):
+    """css class for a return cell: g1-g5 up, r1-r5 down, darker the bigger (full = return at the darkest shade).
+    classes, not inline styles: streamlit strips style attributes"""
+    return ('g' if v >= 0 else 'r') + str(min(int(abs(v) / full * 5) + 1, 5))
+
+
+def month_grid(r, rf_m):
+    """month-by-year returns as a heat map, with each year's return, volatility, sharpe and share of positive months"""
+    m = monthly(r)
+    y = m.index.year
+    grid = m.groupby([y, m.index.month]).first().unstack()
+    ex = m - rf_m.loc[m.index]
+    year = pd.DataFrame({'ret': (1 + m).groupby(y).prod() - 1, 'vol': m.groupby(y).std() * 12 ** .5,
+                         'sharpe': ex.groupby(y).mean() / ex.groupby(y).std() * 12 ** .5, 'up': (m > 0).groupby(y).mean()})
+    pc = lambda v: '' if pd.isna(v) else num(round(v, 3))[0].rstrip('%')            # round first: no "−0.0"
+    cell = lambda v, full, cls='': f'<td class="{cls} {shade(v, full)}">{pc(v)}</td>' if pd.notna(v) else '<td></td>'
+    best, worst = year.ret.idxmax(), year.ret.idxmin()
+    head = ('<tr><th></th>' + ''.join(f'<th>{pd.Timestamp(2000, k, 1):%b}</th>' for k in range(1, 13))
+            + '<th class="sep">Year</th><th>Vol</th><th>Sharpe</th><th>Up</th></tr>')
+    rows = ''.join(f'<tr><td>{t}</td>' + ''.join(cell(grid.loc[t].get(k), .08) for k in range(1, 13))
+                   + cell(o.ret, .3, 'sep ext' if t in (best, worst) else 'sep')
+                   + f'<td>{pc(o.vol)}</td><td>{num(o.sharpe, "x")[0]}</td><td>{o.up:.0%}</td></tr>' for t, o in year.iterrows())
+    avg = ('<tr class="total"><td>Average</td>' + ''.join(cell(grid[k].mean(), .08) if k in grid else '<td></td>' for k in range(1, 13))
+           + cell(year.ret.mean(), .3, 'sep') + f'<td>{pc(m.std() * 12 ** .5)}</td>'
+           + f'<td>{num(ex.mean() / ex.std() * 12 ** .5, "x")[0]}</td><td>{(m > 0).mean():.0%}</td></tr>')
+    html(f'<div class="scroll"><table class="plain heat">{head}{rows}{avg}</table></div>')
+
+
+def hit_rates(r, bench):
+    """how often and by how much the portfolio wins, next to the S&P 500"""
+    def col(d):
+        m, y = monthly(d), (1 + d).groupby(d.index.year).prod() - 1
+        return {'Positive months': (m > 0).mean(), 'Positive days': (d > 0).sum() / (d != 0).sum(),
+                'Average up month': m[m > 0].mean(), 'Average down month': m[m < 0].mean(),
+                'Best month': m.max(), 'Worst month': m.min(), 'Best year': y.max(), 'Worst year': y.min()}
+    a, b = col(r), col(bench)
+    rows = ''.join(f'<tr><td class="label">{k}</td>{td(a[k], cls="em")}{td(b[k])}</tr>' for k in a)
+    html(f'<table class="plain"><tr><th></th><th>{PF}</th><th>{SP}</th></tr>{rows}</table>')
+
+
 def annual_returns():
     heading('Annual returns')
     p, res = results()
+    html('<h4>Month by month, net of costs (%)</h4>')
+    month_grid(res['bt'].net, res['rf_m'])
+    note('Green months gained, red months lost; the darker, the bigger the move. Year is the compounded return, framed for '
+         'the best and the worst year. Vol and Sharpe are annualised from that year&rsquo;s monthly returns, and Up is the '
+         'share of months with a gain. The last row averages each column over all years.')
+    html('<h4>Against the S&amp;P 500</h4>')
     yr = res['yearly']
     cagr = lambda r: (1 + r).prod() ** (1 / len(yr)) - 1
     rows = ''.join(f'<tr><td>{y}</td>{td(r.Strategy, cls="em")}{td(r["S&P 500 TR"])}<td class="dim">{r["Pair held"]}</td></tr>'
@@ -681,6 +743,8 @@ def annual_returns():
          f'<tr class="total"><td>Cumulative</td>{td((1 + yr.Strategy).prod() - 1)}{td((1 + yr["S&P 500 TR"]).prod() - 1)}<td></td></tr></table>')
     note('Compound growth is lower than the arithmetic average return on the Performance page, because losses and gains '
          'compound unevenly.')
+    html('<h4>Hit rates</h4>')
+    hit_rates(res['bt'].net, res['bench_d'])
 
 
 def stress_tests():
