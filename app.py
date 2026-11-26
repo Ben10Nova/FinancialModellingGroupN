@@ -22,7 +22,7 @@ from landing import landing
 FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
 ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
-RESPONSIBLE = ('Noah van Raay', 'Rua Joaquim António de Aguiar 71', '[postal code] Lisboa, Portugal')   # imprint
+RESPONSIBLE = ('Noah van Raay', 'c/o Nova School of Business and Economics', 'Rua da Holanda 1', '2775-405 Carcavelos, Portugal')   # imprint
 CONTACT = '[email]'                                                                                     # imprint: required
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
 DEFAULTS = Params()
