@@ -65,12 +65,12 @@ BIO_CHRIS = ('<p>BBA in International Finance from the University of Augsburg, n
              '<p>Internships at EY and Salesfive.</p>'
              '<ul><li>Maintains performance tracking and the monthly return attribution between sleeves.</li></ul>')
 TEAM = [  # name, title, photo, bio (html), linkedin url ('' hides the icon)
-    ('lucas s', 'associate', 'assets/lucas_strobel.jpg', BIO_LUCAS, ''),
-    ('ben s', 'associate', 'assets/ben_s.jpg', BIO_BEN, ''),
-    ('katha g', 'associate', 'assets/katha_g.jpg', BIO_KATHA, ''),
-    ('noah vr', 'director', 'assets/noah_vr.jpg', BIO_NOAH, ''),
-    ('henrik t', 'partner', 'assets/henrik_trillhaas.jpg', BIO_HENRIK, ''),
-    ('chris w', 'analyst', 'assets/chris_w.jpg', BIO_CHRIS, '')]
+    ('lucas s', 'investor', 'assets/lucas_strobel.jpg', BIO_LUCAS, ''),
+    ('ben s', 'investor', 'assets/ben_s.jpg', BIO_BEN, ''),
+    ('katha g', 'investor', 'assets/katha_g.jpg', BIO_KATHA, ''),
+    ('noah vr', 'investor', 'assets/noah_vr.jpg', BIO_NOAH, ''),
+    ('henrik t', 'investor', 'assets/henrik_trillhaas.jpg', BIO_HENRIK, ''),
+    ('chris w', 'investor', 'assets/chris_w.jpg', BIO_CHRIS, '')]
 LOADER = ('M0,134.8 5,134.4 10,137.7 15,132.2 20,128.2 25,128.8 30,127.6 35,126.4 41,127.5 46,129.3 51,131.2 56,130.3 61,129.5 66,129.5 71,124.2 76,123.9 81,124.0 86,120.1 91,123.6 96,119.8 101,115.4 106,112.6 111,114.6 116,115.9 122,113.9 127,110.9 132,110.7 137,109.9 142,107.3 147,104.5 152,103.1 157,98.8 162,100.2 167,97.1 172,94.1 177,90.5 182,89.7 187,87.2 192,84.7 197,84.4 203,85.2 208,84.5 213,83.0 218,83.1 223,77.8 228,72.6 233,68.5 238,67.4 243,63.9 248,67.8 253,63.8 258,67.2 263,65.0 268,62.8 273,66.0 278,64.7 284,60.9 289,48.8 294,48.8 299,48.5 304,51.0 309,46.0 314,44.0 319,42.5 324,42.8 329,44.4 334,42.5 339,42.7 344,39.2 349,36.9 354,31.3 359,33.5 365,27.2 370,27.0 375,21.6 380,18.8 385,14.9 390,14.7 395,12.6 400,10.0',                # all-time growth of $1, log scale, quarterly: portfolio
           'M0,135.2 5,134.1 10,134.9 15,131.7 20,129.9 25,128.5 30,129.0 35,126.4 41,130.8 46,130.4 51,133.7 56,144.0 61,150.0 66,147.5 71,142.4 76,140.3 81,138.7 86,134.6 91,137.3 96,134.3 101,130.8 106,128.4 111,130.3 116,131.3 122,129.2 127,126.5 132,126.8 137,125.7 142,123.1 147,120.4 152,118.0 157,116.2 162,115.4 167,113.1 172,111.9 177,109.9 182,110.2 187,108.3 192,107.7 197,108.0 203,110.5 208,107.8 213,105.6 218,106.2 223,103.3 228,101.3 233,99.7 238,97.9 243,94.0 248,96.4 253,93.8 258,95.1 263,95.0 268,91.4 273,90.7 278,89.8 284,87.2 289,91.1 294,86.3 299,86.2 304,81.0 309,76.2 314,74.1 319,72.1 324,72.7 329,76.1 334,75.9 339,78.3 344,76.1 349,75.1 354,71.1 359,74.5 365,68.7 370,67.0 375,63.2 380,61.8 385,59.4 390,62.5 395,57.3 400,54.2')                   # and s&p 500 tr
 INK, MUTED, HAIR = '#101924', '#555b63', '#d7d7d7'
