@@ -1,91 +1,105 @@
-"""home page hero: name, tagline, three key figures against the S&P 500, two buttons and the growth of $1 drawn below.
-one iframe, so the curves can draw themselves and the figures can count up."""
+"""home page hero: a night fjord filling the screen, with the key figures over it. one iframe, so the photo can move:
+the aurora drifts and breathes, the stars in the photo twinkle and the water shimmers, while the mountains stay still."""
+import base64
 import json
+from pathlib import Path
 
 import streamlit.components.v1 as components
 
-from strategy import wealth
+PHOTO = Path(__file__).parent / 'assets' / 'hero.webp'          # 1672 x 941
+RIDGE = [(0, 335), (120, 315), (200, 292), (240, 298), (300, 350), (400, 410), (470, 440), (560, 475), (700, 505),
+         (830, 570), (870, 580), (950, 560), (1020, 490), (1100, 470), (1200, 420), (1260, 408), (1330, 430), (1380, 390),
+         (1440, 345), (1500, 370), (1560, 362), (1620, 338), (1672, 338)]   # skyline traced on the photo, in pixels
+ROCKS = [(1672, 696), (1580, 712), (1520, 755), (1370, 780), (1270, 870), (1255, 941)]   # shore rocks, bottom right
+# stars found once in the photo (bright points on smooth dark sky above the skyline): x %, y %, strength 0-1
+STARS = [[5.62,10.52,1],[5.38,6.06,1],[14.53,7.12,1],[31.1,17.53,1],[65.07,0.43,1],[17.34,7.23,1],[64.0,6.8,1.0],[30.14,8.29,1.0],[48.8,8.4,0.97],[58.91,11.58,0.97],[20.16,14.98,0.96],[12.92,8.5,0.96],[62.32,15.2,0.88],[16.09,15.2,0.88],[0.78,19.02,0.87],[12.44,24.44,0.85],[74.7,10.84,0.85],[21.23,1.59,0.85],[26.38,6.38,0.83],[62.62,8.61,0.83],[23.44,27.74,0.83],[25.66,5.1,0.82],[22.55,23.06,0.8],[30.02,31.77,0.77],[57.48,5.74,0.74],[31.4,22.53,0.73],[16.21,15.94,0.72],[2.21,13.39,0.71],[14.06,27.63,0.71],[15.73,13.5,0.71],[17.05,18.07,0.7],[35.17,24.87,0.67],[11.72,19.34,0.67],[47.73,16.58,0.66],[57.36,4.99,0.66],[33.79,7.55,0.66],[18.9,31.67,0.66],[19.92,30.61,0.65],[29.31,11.58,0.65],[23.98,22.85,0.65],[73.27,14.88,0.64],[9.45,20.94,0.64],[32.95,1.59,0.64],[25.12,8.29,0.64],[4.61,23.59,0.63],[82.12,1.49,0.63],[31.28,1.81,0.62],[24.46,12.33,0.62],[85.23,8.4,0.62],[32.89,4.78,0.62],[90.91,13.82,0.6],[70.22,10.31,0.6],[32.12,8.18,0.6],[51.08,9.78,0.59],[26.14,6.59,0.59],[78.83,0.32,0.58],[78.89,2.55,0.58],[15.91,7.01,0.58],[20.57,22.95,0.57],[74.1,15.3,0.57],[51.56,2.66,0.56],[33.31,6.27,0.56],[54.84,40.6,0.55],[54.96,6.27,0.55],[45.93,18.38,0.55],[20.75,3.93,0.54],[86.42,6.16,0.54],[47.85,12.65,0.54],[66.99,13.07,0.54],[62.02,14.03,0.53],[48.21,0.11,0.53],[79.43,5.84,0.53],[15.25,11.69,0.52],[73.5,16.05,0.52],[48.56,13.82,0.52],[23.09,21.89,0.52],[44.38,4.25,0.51],[93.24,6.7,0.51],[14.95,29.33,0.51],[52.33,0.85,0.51],[34.27,3.08,0.5],[83.85,0.85,0.5],[91.21,12.43,0.49],[94.92,19.98,0.49],[36.66,13.18,0.49],[24.04,22.32,0.48],[21.29,2.13,0.48],[25.3,2.76,0.47],[52.87,3.72,0.47],[0.66,0.43,0.47],[83.43,1.17,0.46],[72.31,23.27,0.46],[24.22,27.95,0.46],[14.17,21.36,0.46],[49.16,3.72,0.46],[43.24,19.13,0.45],[44.74,5.31,0.45],[49.76,5.74,0.44],[3.29,6.8,0.44],[66.33,21.57,0.44],[35.71,14.88,0.44],[22.31,12.54,0.44],[86.0,29.22,0.44],[30.56,3.61,0.43],[72.19,5.74,0.43],[64.0,13.5,0.43],[61.12,9.88,0.43],[57.78,13.07,0.43],[23.8,21.47,0.43],[11.6,1.28,0.43],[12.14,12.54,0.42],[23.39,13.6,0.42],[36.0,12.75,0.42],[46.89,6.91,0.42],[37.8,8.71,0.42],[14.77,11.16,0.42],[33.07,17.43,0.42],[70.39,6.7,0.42],[18.96,7.23,0.42],[19.86,11.69,0.41],[44.2,1.38,0.41],[1.56,30.29,0.41],[18.24,8.61,0.4],[55.08,20.09,0.4],[72.01,1.49,0.4],[23.27,28.59,0.4],[73.5,18.92,0.4],[50.78,3.72,0.4],[28.77,10.84,0.4],[32.18,39.21,0.4],[91.51,28.8,0.4],[26.85,16.26,0.4],[22.73,37.94,0.39],[28.95,13.82,0.39],[22.73,3.61,0.39],[11.18,0.53,0.39],[52.99,2.23,0.39],[47.97,7.01,0.38],[53.53,11.37,0.38],[72.43,1.81,0.38]]
 
 
-def landing(res, fund, fund_long, address):
+def landing(res, fund, fund_long):
     """res: results at the notebook defaults, so the home page always shows the prospectus numbers"""
-    t, bt = res['table'], res['bt']
-    s, b = 'Strategy (net)', 'S&P 500 TR'
-    month = lambda r: wealth(r).resample('ME').last()
-    ws, wb = month(bt.net), month(res['bench_d'])
-    fig = lambda k, c, m=100: round(float(t.loc[k, c]) * m, 1 if m == 100 else 2)
-    data = dict(s=[round(v, 4) for v in ws], b=[round(v, 4) for v in wb], y0=int(ws.index[0].year), y1=int(ws.index[-1].year),
-                ret=[fig('Ann. avg return', s), fig('Ann. avg return', b)], sharpe=[fig('Sharpe ratio', s, 1), fig('Sharpe ratio', b, 1)],
-                dd=[fig('Max drawdown (monthly)', s), fig('Max drawdown (monthly)', b)])
-    page = (PAGE.replace('__DATA__', json.dumps(data, separators=(',', ':'))).replace('__FUND__', fund)
-            .replace('__LONG__', fund_long.upper()).replace('__ADDRESS__', address))
-    components.html(page, height=760)
+    t = res['table']
+    fig = lambda k, m=100: [round(float(t.loc[k, c]) * m, 1 if m == 100 else 2) for c in ('Strategy (net)', 'S&P 500 TR')]
+    y0, y1 = res['bt'].index[0].year, res['bt'].index[-1].year
+    pct = lambda pts: ','.join(f'{x / 16.72:.2f}% {y / 9.41:.2f}%' for x, y in pts)
+    data = dict(kpi=[[*fig('Ann. avg return'), 1, '%', 'Average return a year'], [*fig('Ann. volatility'), 1, '%', 'Volatility a year'],
+                     [*fig('Sharpe ratio', 1), 2, '', 'Sharpe ratio'], [*fig('Max drawdown (monthly)'), 1, '%', 'Largest fall, month-end']],
+                stars=STARS, years=f'{y0}–{y1}')
+    page = (PAGE.replace('__DATA__', json.dumps(data, separators=(',', ':'))).replace('__FUND__', fund).replace('__LONG__', fund_long)
+            .replace('__IMG__', base64.b64encode(PHOTO.read_bytes()).decode())
+            .replace('__SKY__', f'polygon(0 0,100% 0,{pct(RIDGE[::-1])})')
+            .replace('__WATER__', f'polygon(0 66.5%,100% 66.5%,{pct(ROCKS)},0 100%)'))
+    components.html(page, height=1)                                # the css on the home page makes the frame fill the screen
 
 
 PAGE = r"""<style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
-html,body{margin:0;background:transparent}
-#lp{color:#101924;font-family:'IBM Plex Sans',sans-serif;padding-bottom:6px}
-#wm{display:block;width:100%;height:auto;margin-top:18px;overflow:visible}
-#wm path{fill:none;stroke-linejoin:round;stroke-linecap:round}
-.fade{opacity:0;transform:translateY(10px);transition:opacity .9s ease,transform .9s ease}
-.fade.in{opacity:1;transform:none}
-.kick{font-size:12px;letter-spacing:.14em;color:#848a90;margin:0 0 14px}
-h1{font-family:'Newsreader',serif;font-weight:500;font-size:84px;line-height:1;margin:0;letter-spacing:.01em}
-.tag{font-family:'Newsreader',serif;font-size:21px;line-height:1.45;color:#3d444c;margin:16px auto 0;max-width:38ch}
-.card{background:#fff;border:1px solid #e9e9e6;border-radius:16px;box-shadow:0 10px 34px rgba(16,25,36,.07),0 1px 3px rgba(16,25,36,.05);max-width:580px;margin:34px auto 0;display:grid;grid-template-columns:repeat(3,1fr);padding:22px 8px}
-.card div{text-align:center;padding:0 12px}
-.card div+div{border-left:1px solid #ececea}
-.card b{display:block;font-family:'Newsreader',serif;font-weight:500;font-size:50px;line-height:1;color:#0b2648;font-variant-numeric:lining-nums tabular-nums;letter-spacing:-.01em}
-.card .lb{display:block;font-size:13px;color:#101924;margin-top:10px}
-.card .vs{display:block;font-size:12.5px;color:#848a90;margin-top:4px;font-variant-numeric:tabular-nums}
-.btns{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:28px;flex-wrap:wrap}
-.cta{all:unset;cursor:pointer;font-size:14px;font-weight:500;background:#101924;color:#fff;border-radius:999px;padding:12px 30px;box-shadow:0 6px 18px rgba(16,25,36,.18)}
-.cta:hover{background:#0b2648}
-.sec{all:unset;cursor:pointer;font-size:14px;font-weight:500;background:#fff;color:#101924;border:1px solid #d7d7d7;border-radius:999px;padding:11px 26px}
-.sec:hover{border-color:#101924}
-.cta:focus-visible,.sec:focus-visible{outline:2px solid #0b2648;outline-offset:3px}
-.ft{text-align:center;font-size:12px;color:#848a90;margin-top:8px}
-@media (max-width:560px){h1{font-size:46px}.tag{font-size:17px}.card b{font-size:30px}.card div{padding:0 6px}.card .lb{font-size:11.5px}}
-@media (prefers-reduced-motion:reduce){.fade{transition:none}}
+html,body{margin:0;height:100%;overflow:hidden;background:#06122e}
+#stage{position:absolute;background:0 0/100% 100% no-repeat}
+#stage>*{position:absolute;inset:0;width:100%;height:100%}
+.sky{clip-path:__SKY__}
+#water{clip-path:__WATER__}
+.aur{mix-blend-mode:screen;opacity:.15;transform-origin:50% 66.5%;animation:breathe 11s ease-in-out infinite,drift 23s ease-in-out infinite alternate}
+.aur.g{filter:hue-rotate(-30deg) saturate(1.3);animation-duration:17s,31s;animation-delay:-6s,-9s;animation-direction:normal,alternate-reverse}
+.aur.w{clip-path:__WATER__;animation-name:breathe,driftw}
+@keyframes breathe{0%,100%{opacity:.12}50%{opacity:.75}}
+@keyframes drift{from{transform:translateX(-1.3%) scaleY(1)}to{transform:translateX(1.3%) scaleY(1.05)}}
+@keyframes driftw{from{transform:translateX(-1.3%) scaleY(1)}to{transform:translateX(1.3%) scaleY(1.03)}}
+#shade{position:fixed;inset:0;background:linear-gradient(180deg,rgba(3,10,28,.55),rgba(3,10,28,0) 22%),
+ linear-gradient(90deg,rgba(3,10,28,.62),rgba(3,10,28,.2) 55%,rgba(3,10,28,0) 80%)}
+#txt{position:fixed;left:var(--pad);right:var(--pad);top:50%;transform:translateY(-38%);color:#fff;font-family:'IBM Plex Sans',sans-serif}
+:root{--pad:clamp(20px,4vw,64px)}
+.brand{display:none;font-family:'Newsreader',serif;font-weight:500;font-size:34px;margin:0 0 18px}
+.eye{font-size:13px;letter-spacing:.04em;color:rgba(255,255,255,.78);margin:0 0 26px}
+.nums{display:grid;grid-template-columns:repeat(4,max-content);gap:28px clamp(36px,5vw,76px)}
+.nums b{display:block;font-family:'Newsreader',serif;font-weight:400;font-size:clamp(46px,5.6vw,82px);line-height:1;
+ letter-spacing:-.015em;font-variant-numeric:lining-nums tabular-nums;text-shadow:0 2px 24px rgba(0,0,0,.25)}
+.nums span{display:block;font-size:14px;margin-top:12px;color:rgba(255,255,255,.92)}
+.nums i{display:block;font-style:normal;font-size:12.5px;margin-top:3px;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums}
+#fine{position:fixed;left:var(--pad);bottom:20px;max-width:56ch;margin:0;font:12px/1.5 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.6)}
+.fade{opacity:0;transform:translateY(10px);transition:opacity 1.1s ease,transform 1.1s ease}.fade.in{opacity:1;transform:none}
+@media (max-width:760px){.brand{display:block}.nums{grid-template-columns:repeat(2,max-content)}#txt{transform:translateY(-45%)}
+ .nums b{font-size:44px}.nums span{font-size:13px}#fine{bottom:64px;right:var(--pad)}}
+@media (prefers-reduced-motion:reduce){.aur{animation:none}.fade{transition:none}}
 </style>
-<div id="lp">
-  <div style="text-align:center;padding:40px 12px 0">
-    <p class="kick fade">__LONG__</p>
-    <h1 class="fade">__FUND__</h1>
-    <p class="tag fade">US equity growth for the return-seeking part of a pension scheme, with drawdowns a funding ratio can live with.</p>
-    <div class="card fade" id="card"></div>
-    <div class="btns fade"><button class="cta" data-go="assumptions">Test your own assumptions &rarr;</button><button class="sec" data-go="performance">See the performance</button></div>
-  </div>
-  <svg id="wm" viewBox="0 0 680 220" role="img" aria-label="Growth of $1, portfolio against the S&amp;P 500"></svg>
-  <p class="ft fade" id="ft"></p>
-</div>
+<div id="stage"><canvas id="water"></canvas><canvas class="aur sky"></canvas><canvas class="aur sky g"></canvas><canvas class="aur w"></canvas><canvas id="stars" class="sky"></canvas></div>
+<div id="shade"></div>
+<div id="txt"><p class="brand fade">__FUND__</p><p class="eye fade">__LONG__ &middot; simulated backtest, <span id="yrs"></span>, net of costs</p><div class="nums fade" id="nums"></div></div>
+<p id="fine" class="fade">Student project for 2270 Financial Modeling at Nova SBE. Simulated figures, not investment advice. Past performance does not predict future results.</p>
 <script>
-const D=__DATA__,S=D.s,B=D.b,$=id=>document.getElementById(id);
-const sg=s=>String(s).replace(/^-/,'−');                       // keeps trailing zeros: 1.10, not 1.1
-const cell=(v,f,suf,lab,bv)=>`<div><b data-v="${v}" data-f="${f}" data-s="${suf}">${sg(v.toFixed(f))}${suf}</b><span class="lb">${lab}</span><span class="vs">S&amp;P 500: ${sg(bv.toFixed(f))}${suf}</span></div>`;
-$('card').innerHTML=cell(D.ret[0],1,'%','Average return a year, net',D.ret[1])+cell(D.sharpe[0],2,'','Sharpe ratio',D.sharpe[1])+cell(D.dd[0],1,'%','Max drawdown, month-end',D.dd[1]);
-$('ft').textContent=`Simulated backtest, ${D.y0}–${D.y1}, net of costs.`;
-const W=680,H=220,R=70,L=52,n=S.length-1;let lo=1,hi=1;S.concat(B).forEach(v=>{lo=Math.min(lo,v);hi=Math.max(hi,v);});
-const l0=Math.log(lo/1.15),l1=Math.log(hi*1.15),x=i=>L+i/n*(W-R-L),y=v=>H-8-(Math.log(v)-l0)/(l1-l0)*(H-24);
-const d=a=>a.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)).join('');
-$('wm').innerHTML=`<line x1="${L}" x2="${W-R}" y1="${y(1)}" y2="${y(1)}" stroke="#ececea"/><path id="pb" d="${d(B)}" stroke="#848a90" stroke-width="1.4" opacity=".5" pathLength="1"/><path id="ps" d="${d(S)}" stroke="#0b2648" stroke-width="2" opacity=".6" pathLength="1"/>
-<g id="ends" style="opacity:0;transition:opacity .6s"><circle cx="${x(n)}" cy="${y(S[n])}" r="3.5" fill="#0b2648"/><text x="${x(n)+8}" y="${y(S[n])+4}" font-family="IBM Plex Sans" font-size="12" font-weight="500" fill="#0b2648">$${S[n].toFixed(2)}</text><circle cx="${x(n)}" cy="${y(B[n])}" r="3" fill="#848a90"/><text x="${x(n)+8}" y="${y(B[n])+4}" font-family="IBM Plex Sans" font-size="12" fill="#848a90">$${B[n].toFixed(2)}</text><text x="${L-10}" y="${y(1)+4}" text-anchor="end" font-family="IBM Plex Sans" font-size="12" font-weight="500" fill="#555b63">$1</text><text x="${L-10}" y="${y(1)+18}" text-anchor="end" font-family="IBM Plex Sans" font-size="10.5" fill="#9aa0a6">${D.y0}</text></g>`;
-function count(el){const v=+el.dataset.v,f=+el.dataset.f,s=el.dataset.s,t0=performance.now(),dur=1400;
+const D=__DATA__,$=id=>document.getElementById(id),still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sg=s=>String(s).replace(/^-/,'−');
+$('yrs').textContent=D.years;
+$('nums').innerHTML=D.kpi.map(([v,b,f,s,l])=>`<div><b data-v="${v}" data-f="${f}" data-s="${s}">${sg(v.toFixed(f))}${s}</b><span>${l}</span><i>S&amp;P 500: ${sg(b.toFixed(f))}${s}</i></div>`).join('');
+const img=new Image(),st=$('stage'),wc=$('water'),sc=$('stars'),IW=1672,IH=941,TOP=.665;
+let W=0,H=0,dpr=1;
+function layout(){const vw=innerWidth,vh=innerHeight;W=Math.max(vw,vh*IW/IH);H=W*IH/IW;
+ const left=Math.min(0,Math.max(vw-W,vw/2-W*.62));         // phones: keep the aurora, right of centre, in view
+ Object.assign(st.style,{width:W+'px',height:H+'px',left:left+'px',top:(vh-H)/2+'px'});
+ dpr=Math.min(devicePixelRatio||1,2);[wc,sc].forEach(c=>{c.width=W*dpr;c.height=H*dpr;});}
+function aurora(){                                         // the aurora alone: pixels where green beats red and blue
+ const w=836,h=470,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(img,0,0,w,h);
+ const d=x.getImageData(0,0,w,h),p=d.data;
+ for(let i=0;i<p.length;i+=4){const s=p[i+1]-.5*(p[i]+p[i+2]);p[i+3]=Math.max(0,Math.min(255,(s-4)*8.5));}
+ x.putImageData(d,0,0);
+ document.querySelectorAll('.aur').forEach(a=>{a.width=w;a.height=h;const y=a.getContext('2d');y.filter='blur(1.5px)';y.drawImage(c,0,0);});}
+const S=D.stars.map(([x,y,a])=>({x:x/100,y:y/100,a,ph:Math.random()*6.28,sp:.6+Math.random()*1.4}));
+function frame(ms){const t=ms/1000,g=wc.getContext('2d'),s=sc.getContext('2d'),w=W*dpr,h=H*dpr;
+ // water: redraw the reflection in thin bands, each nudged sideways by a slow wave, a little more towards the viewer
+ const y0=Math.round(h*TOP),band=2*dpr,sh=IH/h*band;g.clearRect(0,0,w,h);
+ for(let y=y0;y<h;y+=band){const k=(y-y0)/(h-y0),dx=(.5+1.6*k)*dpr*Math.sin(y/(7*dpr)*.55+t*.9+Math.sin(t*.23+y/(60*dpr)));
+  g.drawImage(img,0,y/h*IH,IW,sh,dx-4*dpr,y,w+8*dpr,band);}
+ // stars: each fades in and out on its own slow rhythm, at most a soft glow
+ s.clearRect(0,0,w,h);
+ for(const o of S){const v=.5+.5*Math.sin(t*o.sp+o.ph);if(v<.35)continue;const r=(1+1.2*o.a)*dpr;
+  const gr=s.createRadialGradient(o.x*w,o.y*h,0,o.x*w,o.y*h,r*2.4);gr.addColorStop(0,`rgba(235,245,255,${.75*o.a*(v-.35)/.65})`);gr.addColorStop(1,'rgba(235,245,255,0)');
+  s.fillStyle=gr;s.fillRect(o.x*w-r*2.4,o.y*h-r*2.4,r*4.8,r*4.8);}}
+let last=0;function loop(ms){if(ms-last>40){last=ms;frame(ms);}requestAnimationFrame(loop);}   // about 25 frames a second
+function count(el){const v=+el.dataset.v,f=+el.dataset.f,s=el.dataset.s,t0=performance.now(),dur=1600;
  (function tick(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=sg((v*e).toFixed(f))+s;if(p<1)requestAnimationFrame(tick);else el.textContent=sg(v.toFixed(f))+s;})(t0);}
-function intro(){const els=[...document.querySelectorAll('.fade')];
- if(matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(e=>e.classList.add('in'));$('ends').style.opacity=1;return;}
- ['pb','ps'].forEach((id,k)=>{const p=$(id);p.style.strokeDasharray=1;p.style.strokeDashoffset=1;p.getBoundingClientRect();p.style.transition=`stroke-dashoffset 2.8s cubic-bezier(.4,0,.2,1) ${0.6+k*.2}s`;p.style.strokeDashoffset=0;});
- els.forEach((e,i)=>setTimeout(()=>e.classList.add('in'),150+i*170));
- setTimeout(()=>document.querySelectorAll('.card b').forEach(count),150+3*170+200);
- setTimeout(()=>$('ends').style.opacity=1,3500);}
-document.querySelectorAll('[data-go]').forEach(btn=>btn.onclick=()=>{const p=btn.dataset.go;
- try{const a=parent.document.querySelector(`a[href$="/${p}"]`);if(a){a.click();return;}}catch(e){}
- try{parent.location.href=p;}catch(e){window.open(p,'_top');}});
-const fit=()=>{try{const h=Math.ceil($('lp').getBoundingClientRect().height)+4+'px';frameElement.style.height=h;const box=frameElement.parentElement;if(box){box.style.height=h;box.style.minHeight=h;box.style.flex="0 0 "+h;}}catch(e){}};  // the streamlit wrapper keeps the height passed from python, so resize it too
-const unfit=()=>{try{const box=frameElement.parentElement;if(box){box.style.height="";box.style.minHeight="";box.style.flex="";}}catch(e){}};  // streamlit reuses this wrapper for the next page's element: give its height back when the frame goes
-addEventListener("pagehide",unfit);addEventListener("unload",unfit);
-new ResizeObserver(fit).observe($('lp'));fit();
-const t0=Date.now();(function ready(){let busy=false;try{busy=parent.document.querySelector('.stApp')?.dataset.testScriptState==='running';}catch(e){}
- if((busy||Date.now()-t0<1500)&&Date.now()-t0<6000)return setTimeout(ready,100);intro();})();
+img.onload=()=>{st.style.backgroundImage=`url(${img.src})`;layout();aurora();addEventListener('resize',()=>{layout();if(still)frame(0);});
+ if(still){frame(0);document.querySelectorAll('.fade').forEach(e=>e.classList.add('in'));return;}
+ requestAnimationFrame(loop);
+ document.querySelectorAll('.fade').forEach((e,i)=>setTimeout(()=>e.classList.add('in'),250+i*220));
+ setTimeout(()=>document.querySelectorAll('.nums b').forEach(count),700);};
+img.src='data:image/webp;base64,__IMG__';
 </script>"""

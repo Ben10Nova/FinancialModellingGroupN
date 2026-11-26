@@ -21,7 +21,6 @@ from landing import landing
 from statement import statement_pdf
 
 FUND, FUND_LONG = 'MVP Strategies', 'Managed Volatility Portfolio'
-ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
 RESPONSIBLE = ('Noah van Raay', 'c/o Nova School of Business and Economics', 'Rua da Holanda 1', '2775-405 Carcavelos, Portugal')   # imprint
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
@@ -290,6 +289,17 @@ img.chart.m { display: none; }
 [data-testid="stTopNavLinkContainer"] a, [data-testid="stTopNavLink"] { text-decoration: none !important; }
 [data-testid="stTopNavLink"] *, [data-testid="stTopNavSection"] * { font-size: 14px !important; color: var(--ink) !important; text-decoration: none !important; }
 [data-testid="stTopNavLink"][aria-current="page"] * { font-weight: 600 !important; }
+[data-testid="stToolbar"] { padding: 0 clamp(20px, 4vw, 64px) 0 clamp(0px, 4vw - 24px, 40px) !important; }
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(1) { margin-right: auto !important; }
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(1) [data-testid="stTopNavLink"] { background: none !important; }
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(1) [data-testid="stTopNavLink"] span { font-size: 0 !important; }
+div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(1) [data-testid="stTopNavLink"] span::before {
+  content: "MVP Strategies"; font-family: var(--serif) !important; font-size: 23px; font-weight: 500; letter-spacing: .005em; }
+[data-baseweb="popover"]:has([data-testid="stTopNavPopover"]) { background: transparent !important; }
+[data-baseweb="popover"]:has([data-testid="stTopNavPopover"]) > div { background: rgba(255,255,255,.72) !important; backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4); border: 1px solid rgba(16,25,36,.08); border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(8,22,56,.14) !important; overflow: hidden; }
+[data-testid="stTopNavPopover"], [data-testid="stTopNavPopover"] * { background: transparent !important; }
 [data-baseweb="popover"] a, [data-baseweb="popover"] a * { text-decoration: none !important; font-size: 14px !important; }
 
 div:has(> div > div > [data-testid="stTopNavLinkContainer"]) > :nth-child(1) { order: 0 !important; }   /* Overview */
@@ -472,11 +482,35 @@ def results(custom=False):
 
 
 # ================================================================ pages
+HOME_CSS = """
+.st-key-hero iframe { position: fixed !important; inset: 0; width: 100vw !important; height: 100vh !important; height: 100dvh !important;
+  z-index: 0; border: 0; }
+.stApp, [data-testid="stMain"] { background: #06122e !important; overflow: hidden !important; }
+.site-foot { display: none; }
+[data-testid="stHeader"] { background: transparent !important; border-bottom: 0 !important; }
+[data-testid="stHeader"] [data-testid="stTopNavLink"] *, [data-testid="stHeader"] [data-testid="stTopNavSection"] *,
+[data-testid="stHeader"] button * { color: #fff !important; }
+[data-testid="stHeader"] [data-testid="stTopNavSection"] svg { fill: #fff !important; }
+[data-testid="stTopNavLink"][href$="/assumptions"] { background: rgba(255,255,255,.16) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); }
+[data-baseweb="popover"]:has([data-testid="stTopNavPopover"]) > div { background: rgba(8,22,56,.42) !important; border-color: rgba(255,255,255,.18) !important; }
+[data-baseweb="popover"] a, [data-baseweb="popover"] a * { color: #fff !important; }
+[data-baseweb="popover"] a:hover { background: rgba(255,255,255,.12) !important; }
+.st-key-hero > div, .st-key-hero { height: 0 !important; min-height: 0 !important; }
+.st-key-foot { position: fixed; right: clamp(20px, 4vw, 64px); bottom: 12px; width: auto !important; z-index: 2; }
+.st-key-foot button * { color: rgba(255,255,255,.75) !important; font-size: 12.5px !important; }
+@media (max-width: 760px) { .st-key-foot { left: 0; right: 0; } }
+[data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapsedControl"] button { background-color: transparent !important;
+  background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff), linear-gradient(#fff,#fff) !important; }
+"""
+
+
 def home():
-    try:                                                           # hero at the base case
-        landing(get_results(CODE, **asdict(DEFAULTS)), FUND, FUND_LONG, ADDRESS)
-    except RuntimeError:                                           # no prices (Yahoo limit): plain name
-        html(f'<div class="home"><div class="mid"><h1 class="bh">{FUND}</h1><p class="long">{FUND_LONG}</p></div></div>')
+    html(f'<style>{HOME_CSS}</style>')                             # only while this page shows: header over the photo
+    with st.container(key='hero'):
+        try:                                                       # hero at the base case
+            landing(get_results(CODE, **asdict(DEFAULTS)), FUND, FUND_LONG)
+        except RuntimeError:                                       # no prices (Yahoo limit): plain name
+            html(f'<div class="home"><div class="mid"><h1 class="bh">{FUND}</h1><p class="long">{FUND_LONG}</p></div></div>')
     with st.container(key='foot', horizontal=True, horizontal_alignment='center', gap='medium'):
         if st.button('Imprint', type='tertiary'):
             dive('Imprint', lambda: html(
