@@ -1,4 +1,5 @@
 import base64
+import hashlib
 from dataclasses import asdict
 from io import BytesIO
 import json
@@ -20,6 +21,7 @@ ADDRESS = 'Rua da Holanda 1 &middot; 2775-405 Carcavelos &middot; Portugal'
 REPO = 'https://github.com/Ben10Nova/FinancialModellingGroupN'
 COLAB = 'https://colab.research.google.com/github/Ben10Nova/FinancialModellingGroupN/blob/main/vol-control_pair_v1.ipynb'
 DEFAULTS = Params()
+CODE = hashlib.md5((Path(__file__).parent / 'strategy.py').read_bytes()).hexdigest()   # cache key: new code = new results
 DEMO_DEPOSIT, DEMO_START = 1000.0, '2026-01-01'
 CRISES = [  # s&p 500 peak and trough closes, what happened, what it shows
     ('global financial crisis', '2007-10-09', '2009-03-09',
@@ -360,12 +362,12 @@ def get_prices():
 
 
 @st.cache_data(show_spinner=False)
-def get_results(**kw):
+def get_results(code, **kw):
     return run(get_prices(), Params(**kw))
 
 
 @st.cache_data(ttl=3600, show_spinner='loading live prices ...')
-def get_live(target_vol=DEFAULTS.target_vol):
+def get_live(target_vol=DEFAULTS.target_vol, code=CODE):
     px = load_live()
     return run(px, Params(start=DEMO_START, end=str(px.index[-1].date()), target_vol=target_vol)), px
 
@@ -373,7 +375,7 @@ def get_live(target_vol=DEFAULTS.target_vol):
 def results():
     p = st.session_state.get('params', DEFAULTS)
     try:
-        return p, get_results(**asdict(p))
+        return p, get_results(CODE, **asdict(p))
     except RuntimeError as e:
         note(str(e))
         st.stop()
