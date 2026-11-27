@@ -497,9 +497,8 @@ HOME_CSS = """
 [data-testid="stHeader"] [data-testid="stTopNavLink"][href$="/assumptions"] * { color: #fff !important; }
 [data-baseweb="popover"]:has([data-testid="stTopNavPopover"]) > div { background: rgba(8,22,56,.42) !important; border-color: rgba(255,255,255,.18) !important; }
 .st-key-hero > div, .st-key-hero { height: 0 !important; min-height: 0 !important; }
-.st-key-foot { position: fixed; right: clamp(20px, 4vw, 64px); bottom: 12px; width: auto !important; z-index: 2; }
+.st-key-foot { position: fixed; left: 0; right: 0; bottom: 12px; width: auto !important; z-index: 2; }   /* centred: streamlit's own badge sits bottom right */
 .st-key-foot button * { color: rgba(255,255,255,.75) !important; font-size: 12.5px !important; }
-@media (max-width: 760px) { .st-key-foot { left: 0; right: 0; } }
 """
 
 
