@@ -57,13 +57,13 @@ BIO_HENRIK = ('<p>BSc in International Business from Maastricht University, now 
               '<p>Internships at Liberta Partners, REIA Capital and Deloitte.</p>')
 BIO_CHRIS = ('<p>BBA in International Finance from the University of Augsburg, now completing an MSc in Finance at Nova SBE.</p>'
              '<p>Internships at EY and Salesfive.</p>')
-TEAM = [  # name, title, photo, bio (html), linkedin url ('' hides the icon)
-    ('Lucas S.', 'Sector spread', 'assets/lucas_strobel.jpg', BIO_LUCAS, ''),
-    ('Ben S.', 'Execution and costs', 'assets/ben_s.jpg', BIO_BEN, ''),
-    ('Katha G.', 'Equity sleeve', 'assets/katha_g.jpg', BIO_KATHA, ''),
-    ('Noah v. R.', 'Risk', 'assets/noah_vr.jpg', BIO_NOAH, ''),
-    ('Henrik T.', 'Portfolio construction', 'assets/henrik_trillhaas.jpg', BIO_HENRIK, ''),
-    ('Chris W.', 'Performance and attribution', 'assets/chris_w.jpg', BIO_CHRIS, '')]
+TEAM = [  # name, photo, bio (html), linkedin url ('' hides the icon)
+    ('Lucas S.', 'assets/lucas_strobel.jpg', BIO_LUCAS, ''),
+    ('Ben S.', 'assets/ben_s.jpg', BIO_BEN, ''),
+    ('Katha G.', 'assets/katha_g.jpg', BIO_KATHA, ''),
+    ('Noah v. R.', 'assets/noah_vr.jpg', BIO_NOAH, ''),
+    ('Henrik T.', 'assets/henrik_trillhaas.jpg', BIO_HENRIK, ''),
+    ('Chris W.', 'assets/chris_w.jpg', BIO_CHRIS, '')]
 LOADER = ('M0,134.8 5,134.4 10,137.7 15,132.2 20,128.2 25,128.8 30,127.6 35,126.4 41,127.5 46,129.3 51,131.2 56,130.3 61,129.5 66,129.5 71,124.2 76,123.9 81,124.0 86,120.1 91,123.6 96,119.8 101,115.4 106,112.6 111,114.6 116,115.9 122,113.9 127,110.9 132,110.7 137,109.9 142,107.3 147,104.5 152,103.1 157,98.8 162,100.2 167,97.1 172,94.1 177,90.5 182,89.7 187,87.2 192,84.7 197,84.4 203,85.2 208,84.5 213,83.0 218,83.1 223,77.8 228,72.6 233,68.5 238,67.4 243,63.9 248,67.8 253,63.8 258,67.2 263,65.0 268,62.8 273,66.0 278,64.7 284,60.9 289,48.8 294,48.8 299,48.5 304,51.0 309,46.0 314,44.0 319,42.5 324,42.8 329,44.4 334,42.5 339,42.7 344,39.2 349,36.9 354,31.3 359,33.5 365,27.2 370,27.0 375,21.6 380,18.8 385,14.9 390,14.7 395,12.6 400,10.0',                # all-time growth of $1, log scale, quarterly: portfolio
           'M0,135.2 5,134.1 10,134.9 15,131.7 20,129.9 25,128.5 30,129.0 35,126.4 41,130.8 46,130.4 51,133.7 56,144.0 61,150.0 66,147.5 71,142.4 76,140.3 81,138.7 86,134.6 91,137.3 96,134.3 101,130.8 106,128.4 111,130.3 116,131.3 122,129.2 127,126.5 132,126.8 137,125.7 142,123.1 147,120.4 152,118.0 157,116.2 162,115.4 167,113.1 172,111.9 177,109.9 182,110.2 187,108.3 192,107.7 197,108.0 203,110.5 208,107.8 213,105.6 218,106.2 223,103.3 228,101.3 233,99.7 238,97.9 243,94.0 248,96.4 253,93.8 258,95.1 263,95.0 268,91.4 273,90.7 278,89.8 284,87.2 289,91.1 294,86.3 299,86.2 304,81.0 309,76.2 314,74.1 319,72.1 324,72.7 329,76.1 334,75.9 339,78.3 344,76.1 349,75.1 354,71.1 359,74.5 365,68.7 370,67.0 375,63.2 380,61.8 385,59.4 390,62.5 395,57.3 400,54.2')                   # and s&p 500 tr
 INK, MUTED, HAIR, NIGHT = '#0e1a2b', '#4d5866', '#dde3ea', '#071a3a'   # night = the sky of the home page photo
@@ -995,8 +995,8 @@ def photo(ph):
 def team():
     """wheel picker: spin the names, the one in the middle shows its photo and bio"""
     heading('Team')
-    people = json.dumps([dict(n=n, t=t, b=b, i=''.join(w[0] for w in n.split()),
-                              u=photo(ph), li=li) for n, t, ph, b, li in TEAM])
+    people = json.dumps([dict(n=n, b=b, i=''.join(w[0] for w in n.split()),
+                              u=photo(ph), li=li) for n, ph, b, li in TEAM])
     components.html("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
@@ -1018,13 +1018,12 @@ body { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #0e1a2b; back
 .ph { position: relative; overflow: hidden; width: 180px; aspect-ratio: 4/5; background: #f5f7fa; border: 1px solid #dde3ea; display: grid; place-items: center;
   font-size: 18px; color: #4d5866; margin-bottom: 16px; }
 .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
-.hd { display: flex; align-items: center; gap: 8px; }
+.hd { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .name { font-family: "Newsreader", Georgia, serif; font-size: 28px; line-height: 1.2; }
 .li { display: inline-flex; color: #9aa1a8; transition: color .15s; }
 .li.hide { display: none; }
 .li:hover { color: #0e7c70; }
 .li svg { width: 18px; height: 18px; fill: currentColor; }
-.title { font-size: 12.5px; color: #4d5866; margin: 2px 0 14px; }
 .bio { font-size: 15px; line-height: 1.6; max-width: 46ch; }
 .bio p { margin: 0 0 10px; }
 .bio ul { margin: 10px 0 0; padding-left: 1.1em; }
@@ -1035,7 +1034,7 @@ body { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #0e1a2b; back
 </style>
 <div class="wrap">
   <div class="picker"><div class="wheel" id="w"></div><div class="band"></div></div>
-  <div class="card" id="c"><div class="ph"><span id="ph"></span><img id="im" alt=""></div><div class="hd"><p class="name" id="nm"></p><a class="li" id="li" target="_blank" rel="noopener" aria-label="LinkedIn"><svg viewBox="0 0 448 512"><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3C448 46.5 433.6 32 416 32zM135.4 416H69V202.2h66.5V416zM102 172.2c-21.3 0-38.5-17.3-38.5-38.5S80.7 95.2 102 95.2c21.2 0 38.5 17.3 38.5 38.5s-17.2 38.5-38.5 38.5zm284.3 243.8h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg></a></div><p class="title" id="tt"></p><div class="bio" id="bo"></div></div>
+  <div class="card" id="c"><div class="ph"><span id="ph"></span><img id="im" alt=""></div><div class="hd"><p class="name" id="nm"></p><a class="li" id="li" target="_blank" rel="noopener" aria-label="LinkedIn"><svg viewBox="0 0 448 512"><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3C448 46.5 433.6 32 416 32zM135.4 416H69V202.2h66.5V416zM102 172.2c-21.3 0-38.5-17.3-38.5-38.5S80.7 95.2 102 95.2c21.2 0 38.5 17.3 38.5 38.5s-17.2 38.5-38.5 38.5zm284.3 243.8h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg></a></div><div class="bio" id="bo"></div></div>
 </div>
 <script>
 const P = PEOPLE, w = document.getElementById('w'), c = document.getElementById('c');
@@ -1046,7 +1045,7 @@ im.onerror = () => im.style.display = 'none';                      // no photo: 
 P.forEach(p => new Image().src = p.u);                              // preload, so spinning does not flash
 function show(i) {
   if (i === cur) return; cur = i; c.classList.add('out');
-  setTimeout(() => { const p = P[i]; ph.textContent = p.i; im.style.display = ''; im.src = p.u; im.alt = p.n; nm.textContent = p.n; tt.textContent = p.t; bo.innerHTML = p.b;
+  setTimeout(() => { const p = P[i]; ph.textContent = p.i; im.style.display = ''; im.src = p.u; im.alt = p.n; nm.textContent = p.n; bo.innerHTML = p.b;
                      li.href = p.li; li.classList.toggle('hide', !p.li);
                      c.classList.remove('out'); size(); }, cur === -1 ? 0 : 150);
 }
