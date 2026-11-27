@@ -57,8 +57,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#06122e}
 .nums i{display:block;font-style:normal;font-size:12.5px;margin-top:3px;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums}
 #fine{position:fixed;left:var(--pad);bottom:20px;max-width:56ch;margin:0;font:12px/1.5 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.6)}
 .fade{opacity:0;transform:translateY(10px);transition:opacity 1.1s ease,transform 1.1s ease}.fade.in{opacity:1;transform:none}
+@media (max-width:1100px){#fine{bottom:52px;right:var(--pad)}}   /* clear of the centred imprint links */
 @media (max-width:760px){.brand{display:block}.nums{grid-template-columns:repeat(2,max-content)}#txt{transform:translateY(-45%)}
- .nums b{font-size:44px}.nums span{font-size:13px}#fine{bottom:64px;right:var(--pad)}}
+ .nums b{font-size:44px}.nums span{font-size:13px}#fine{bottom:64px}}
 @media (prefers-reduced-motion:reduce){.aur{animation-name:breathe,none}.fade{transition:none}}
 </style>
 <div id="stage"><canvas id="water"></canvas><canvas class="aur sky"></canvas><canvas class="aur sky g"></canvas><canvas class="aur w"></canvas><canvas id="stars" class="sky"></canvas></div>
