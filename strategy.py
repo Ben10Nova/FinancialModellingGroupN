@@ -63,6 +63,44 @@ def load_live(start='2024-01-01'):
     return raw.dropna()
 
 
+def load_intraday():
+    """5-minute prices of the last five sessions, New York time without the zone"""
+    msg = 'Yahoo Finance is rate-limiting downloads right now. Live prices return in a minute.'
+    if time.time() < _cooldown['until']:
+        raise RuntimeError(msg)
+    try:
+        raw = yf.download(ASSETS, period='5d', interval='5m', auto_adjust=True, progress=False)['Close'][ASSETS]
+        raw = raw.ffill().dropna()
+    except Exception:
+        raw = None
+    if raw is None or raw.empty:
+        _cooldown['until'] = time.time() + 60
+        raise RuntimeError(msg)
+    raw.index = raw.index.tz_convert('America/New_York').tz_localize(None)
+    return raw
+
+
+def intraday_value(bt, px, bench, bars):
+    """portfolio and S&P 500 value through each session in bars, as growth of $1 since inception. each session starts
+    from the previous close and holds the weights set at that close; SPY stands in for the S&P 500 during the day.
+    ignores the day's financing and borrow accrual (a few basis points a year, booked at the close)."""
+    W, B = (1 + bt.net).cumprod(), (1 + bench).cumprod()
+    cols = [f'w_{a}' for a in ASSETS]
+    out = []
+    for day, b in bars.groupby(bars.index.normalize()):
+        prev = px.index[px.index < day]
+        if not len(prev) or prev[-1] not in W.index:
+            continue
+        prev = prev[-1]
+        r = b / px.loc[prev, ASSETS] - 1
+        session = pd.DataFrame({'pf': W[prev] * (1 + r.to_numpy() @ bt.loc[prev, cols].to_numpy()),
+                                'sp': B[prev] * (1 + r['SPY'].to_numpy())}, index=b.index)
+        session = pd.concat([pd.DataFrame({'pf': W[prev], 'sp': B[prev]}, index=[prev]), session])
+        session.attrs['prev'] = prev
+        out.append(session)
+    return out                                                     # one frame per session, each led by its previous close
+
+
 def month_end_flag(idx):
     me = ~idx.to_period('M').duplicated(keep='last')            # last trading day of each month
     if len(idx) and idx[-1] != idx[-1] + pd.offsets.BMonthEnd(0):

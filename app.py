@@ -15,7 +15,8 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from strategy import ASSETS, Params, load_live, load_prices, monthly, pair_targets, run, wealth
+from live import board
+from strategy import ASSETS, Params, intraday_value, load_intraday, load_live, load_prices, monthly, pair_targets, run, wealth
 from replay import replay
 from landing import landing
 from statement import statement_pdf
@@ -467,6 +468,11 @@ def live_prices():
     return load_live()
 
 
+@st.cache_data(ttl=60, show_spinner=False)                         # one download a minute, shared by all visitors
+def get_intraday(code=CODE):
+    return load_intraday()
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_live(target_vol=DEFAULTS.target_vol, code=CODE):
     px = live_prices()
@@ -826,22 +832,66 @@ def attribution():
          f'<span class="fig">{res["exposure_now"]:.2f}x</span> and {pair}.</p>')
 
 
+def live_ranges(live, px):
+    """1D and 1W from 5-minute prices, 1M and YTD from daily closes plus the latest price. None if no intraday prices"""
+    lb, bench = live['bt'], live['bench_d']
+    try:
+        sessions = intraday_value(lb, px, bench, get_intraday())
+    except RuntimeError:
+        sessions = []
+    t0 = pd.Timestamp(DEMO_START) - pd.Timedelta(days=1)
+    daily = pd.DataFrame({'pf': (1 + lb.net).cumprod(), 'sp': (1 + bench).cumprod()})
+    daily = pd.concat([pd.DataFrame({'pf': 1.0, 'sp': 1.0}, index=[t0]), daily])
+    if sessions:
+        daily = pd.concat([daily.loc[:sessions[-1].attrs['prev']], sessions[-1].iloc[[-1]]])   # completed closes, then now
+    iso = lambda df: [f'{t:%Y-%m-%dT%H:%M}' if (t.hour or t.minute) else f'{t:%Y-%m-%d}' for t in df.index]
+    pack = lambda df: dict(t=iso(df), p=df.pf.round(6).tolist(), s=df.sp.round(6).tolist())
+    ranges = {}
+    if sessions:
+        ranges['1D'] = pack(sessions[-1])
+        ranges['1W'] = pack(pd.concat([sessions[0]] + [s.iloc[1:] for s in sessions[1:]]))
+    month = daily.loc[:daily.index[-1] - pd.DateOffset(months=1)]
+    ranges['1M'] = pack(daily.loc[month.index[-1]:] if len(month) else daily)
+    ranges['YTD'] = pack(daily)
+    last = sessions[-1].index[-1] if sessions else None
+    return ranges, last
+
+
+@st.fragment(run_every=60)
+def live_board():
+    """reruns on its own every minute; the rest of the page stays put"""
+    try:
+        live, px = get_live()
+    except RuntimeError as e:                                   # download failed; real bugs still surface
+        note(str(e))
+        return
+    ranges, last = live_ranges(live, px)
+    now = pd.Timestamp.now(tz='America/New_York').tz_localize(None)
+    is_live = last is not None and now - last < pd.Timedelta(minutes=15)
+    status = (f'Live · {now:%H:%M} New York · 5-minute prices from Yahoo Finance, refreshed every minute' if is_live else
+              f'Market closed · last price {last:%a %d %b, %H:%M} New York' if last is not None else
+              f'Intraday prices unavailable right now · closes up to {live["bt"].index[-1]:%d %b %Y}')
+    board(ranges, status, bool(is_live))
+
+
 def live_2026():
     heading('Live 2026')
     html('<p>We fixed the rules at the 31 Dec 2025 close and have not changed them since. This page runs them on 2026 data, '
          'which played no part in designing the strategy, with the base-case assumptions.</p>')
+    live_board()
     try:
         live = get_live()[0]
-    except RuntimeError as e:                                   # download failed; real bugs still surface
-        note(str(e))
+    except RuntimeError:
         return
     lb, lbench = live['bt'], live['bench_d']
-    note(f'From 1 Jan 2026 to {lb.index[-1]:%d %b %Y}.')
+    note('During the day the portfolio is revalued every five minutes with the weights it held at the previous close; '
+         'SPY stands in for the S&amp;P 500 total return index until the close.')
+    html('<h4>Since 1 January</h4>')
     row = lambda name, r, cls: (f'<tr class="{cls}"><td class="label">{name}</td>{td((1 + r).prod() - 1)}'
                                 f'{td(monthly(r).std() * 12 ** .5)}{td(daily_dd(r))}</tr>')
     html('<table class="plain"><tr><th></th><th>Return since 1 Jan</th><th>Volatility (annualised, monthly)</th>'
          '<th>Max drawdown (daily)</th></tr>' + row(PF, lb.net, 'em') + row(SP, lbench, '') + '</table>')
-    chart('Growth of $1 in 2026', [(PF, wealth(lb.net), S1), (SP, wealth(lbench), S2)], kind='line')
+    note(f'Daily closes from 1 Jan 2026 to {lb.index[-1]:%d %b %Y}.')
     html(f'<p>Equity exposure today is <span class="fig">{lb.w_spy.iloc[-1]:.2f}x</span>, and the spread pair is '
          f'<span class="fig">{"/".join(live["pair_now"])}</span>.</p>')
 
