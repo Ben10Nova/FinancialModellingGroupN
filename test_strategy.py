@@ -3,7 +3,7 @@ from dataclasses import replace
 
 import numpy as np
 import pandas as pd
-from strategy import Params, load_live, load_prices, run, backtest, pair_targets, stats
+from strategy import Params, intraday_value, load_intraday, load_live, load_prices, run, backtest, pair_targets, stats
 
 px = load_prices()
 res = run(px)
@@ -46,6 +46,12 @@ nz = tgt.ne(0)                                            # new set of open legs
 opened = nz.ne(nz.shift(fill_value=False)).any(axis=1) & nz.any(axis=1) & z.notna()
 assert opened.sum() > 50 and (z[opened].abs() > Params().z_in).all(), z[opened][z[opened].abs() <= Params().z_in]
 live = load_live()                                                    # live 2026 (11 months) must run too
-assert len(run(live, Params(start='2026-01-01', end=str(live.index[-1].date())))['bt']) > 100
+lr = run(live, Params(start='2026-01-01', end=str(live.index[-1].date())))
+assert len(lr['bt']) > 100
+done = [s for s in intraday_value(lr['bt'], live, lr['bench_d'], load_intraday())[:-1]]   # completed sessions
+for s in done:                       # 5-minute revaluation lands on the backtest's daily return (accruals aside)
+    day = s.index[-1].normalize()
+    assert abs(s.pf.iloc[-1] / s.pf.iloc[0] - 1 - lr['bt'].gross.loc[day]) < 3e-4, day
 
-print(f'ok: app matches notebook (performance, risk profile, monte carlo), no look-ahead, all {opened.sum()} pair entries at |z| > {Params().z_in}')
+print(f'ok: app matches notebook (performance, risk profile, monte carlo), no look-ahead, all {opened.sum()} pair entries at |z| > {Params().z_in}, '
+      f'live intraday matches daily on {len(done)} sessions')
