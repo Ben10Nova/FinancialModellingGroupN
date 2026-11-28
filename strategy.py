@@ -290,6 +290,31 @@ def risk_stats(r_m, rf_m, bench_m):
     })
 
 
+def pension_mix(r_m, rf_m, bench_m, share=0.20, fee=0.005, size=100e6):
+    """a pension scheme's us equity sleeve of `size` dollars: `share` of it replaced by the strategy (net of an annual
+    management fee, charged monthly), the rest left in the s&p 500 tr, back to the target split at each month-end.
+    returns the mixed monthly returns and a table against keeping the whole sleeve in the s&p 500 tr"""
+    b = bench_m.loc[r_m.index]
+    mix = share * (r_m - fee / 12) + (1 - share) * b
+
+    def col(m):
+        w = (1 + m).cumprod()
+        s, r = stats(m, rf_m, bench_m), risk_stats(m, rf_m, bench_m)
+        y08 = m.loc['2008'] if (m.index.year == 2008).any() else None
+        before08 = w.loc[:'2007'].iloc[-1] if (m.index.year < 2008).any() else 1.0
+        return pd.Series({
+            'Ann. avg return': s['Ann. avg return'], 'Ann. volatility': s['Ann. volatility'],
+            'Sharpe ratio': s['Sharpe ratio'], 'Beta': s['Beta'], 'Max drawdown (monthly)': s['Max drawdown (monthly)'],
+            'Upside capture': r['Upside capture'], 'Downside capture': r['Downside capture'],
+            'Tracking error': r['Tracking error'],
+            'Return in 2008': (1 + y08).prod() - 1 if y08 is not None else np.nan,
+            'Value at the end ($)': size * w.iloc[-1],
+            'Change in 2008 ($)': size * before08 * ((1 + y08).prod() - 1) if y08 is not None else np.nan,
+            'Largest fall from a peak ($)': -size * (w.cummax().clip(lower=1) - w).max(),     # (HWM - P) in dollars
+        })
+    return mix, pd.DataFrame({'With the strategy': col(mix), 'All in the S&P 500 TR': col(b)})
+
+
 def rolling_greeks(r_m, rf_m, bench_m, n=60):
     """60-month rolling alpha (ann.) and beta, as in the lecture's rolling_greeks"""
     rf = rf_m.loc[r_m.index]

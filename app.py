@@ -16,7 +16,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from live import board
-from strategy import ASSETS, Params, intraday_value, load_intraday, load_live, load_prices, monthly, pair_targets, run, wealth
+from strategy import (ASSETS, Params, intraday_value, load_intraday, load_live, load_prices, monthly, pair_targets, pension_mix,
+                      run, wealth)
 from replay import replay
 from landing import landing
 from statement import statement_pdf
@@ -610,6 +611,55 @@ def thesis():
          'than either sleeve on its own, with lower volatility and much smaller drawdowns than the S&amp;P 500.</p>')
     html('<h4>For pension schemes</h4>')
     term_sheet()
+
+
+PENSION_ROWS = [('Ann. avg return', 'pct'), ('Ann. volatility', 'pct'), ('Sharpe ratio', 'x'), ('Beta', 'x'),
+                ('Max drawdown (monthly)', 'pct'), ('Return in 2008', 'pct'), ('Upside capture', 'pct'),
+                ('Downside capture', 'pct'), ('Tracking error', 'pct'), ('Value at the end ($)', 'm'),
+                ('Change in 2008 ($)', 'm'), ('Largest fall from a peak ($)', 'm')]
+
+
+def save_pension():
+    ss = st.session_state
+    ss['pm'] = (ss['f_pm_size'] * 1e6, ss['f_pm_share'] / 100, ss['f_pm_fee'] / 100)
+
+
+def pension():
+    heading('In a pension portfolio')
+    html('<p class="lede">The strategy is built to replace part of a pension scheme&rsquo;s US equities, not to sit on top of '
+         'them. It runs at about the volatility of the S&amp;P 500, so the swap leaves total risk roughly where it was, while '
+         'market exposure and crash losses come down.</p>')
+    ss = st.session_state
+    size, share, fee = ss.setdefault('pm', (MANDATE, .20, .005))
+    with st.form('pm_settings'):
+        c = st.columns(3, gap='large')
+        c[0].number_input('US equity sleeve ($m)', 1.0, 100_000.0, size / 1e6, 10.0, format='%.0f', key='f_pm_size')
+        c[1].slider('Share replaced by the strategy (%)', 0, 100, round(share * 100), 5, key='f_pm_share')
+        c[2].slider('Management fee on the strategy (% a year)', 0.0, 2.0, round(fee * 100, 2), 0.05, format='%.2f',
+                    key='f_pm_fee')
+        st.form_submit_button('Run', type='primary', on_click=save_pension)
+    p, res = results()
+    mix, t = pension_mix(monthly(res['bt'].net), res['rf_m'], monthly(res['bench_d']), share, fee, size)
+    w, b = t['With the strategy'], t['All in the S&P 500 TR']
+    mixed = f'{1 - share:.0%} S&amp;P 500 + {share:.0%} strategy'
+    signed = lambda v, kind: ('+' if v >= 0 else '') + num(v, kind)[0]
+    dollars = lambda v: ('−' if v < 0 else '') + f'${abs(v) / 1e6:,.1f}m'          # one decimal, as on the mandate report
+    html(f'<div class="hero"><p class="k">A ${size / 1e6:,.0f}m US equity sleeve from January {p.start[:4]} to the '
+         f'{mix.index[-1]:%b %Y} month-end</p><p class="big">{dollars(w["Value at the end ($)"])}</p>'
+         f'<p class="chg"><span class="{num(w["Value at the end ($)"] - b["Value at the end ($)"])[1]}">'
+         f'{signed(w["Value at the end ($)"] - b["Value at the end ($)"], "m")}</span><span class="dim"> against '
+         f'{dollars(b["Value at the end ($)"])} all in the S&amp;P 500 TR &middot; 2008: '
+         f'{signed(w["Change in 2008 ($)"], "m")} instead of {signed(b["Change in 2008 ($)"], "m")}</span></p></div>')
+    head = f'<tr><th></th><th>{mixed}</th><th>{SP}</th></tr>'
+    body = ''.join(f'<tr><td class="label">{ROWS.get(k, k)}</td>{td(w[k], kind, "em")}{td(b[k], kind)}</tr>'
+                   for k, kind in PENSION_ROWS)
+    html(f'<table class="plain">{head}{body}</table>')
+    chart('Growth of $1, log scale', [(mixed, wealth(mix), S1), (SP, wealth(monthly(res['bench_d'])), S2)])
+    chart('Drawdown, month-end', [(mixed, wealth(mix), S1), (SP, wealth(monthly(res['bench_d'])), S2)], kind='drawdown', h=2.2)
+    note(f'Backtest {p.start[:4]}&ndash;{p.end[:4]}, monthly returns. The strategy slice is net of the modelled trading, '
+         'financing and borrow costs and of the management fee set above, charged monthly. The S&amp;P 500 slice is held at no '
+         'cost. The split goes back to target at each month-end. Interest-rate risk on the liabilities stays with the '
+         'scheme&rsquo;s liability-hedging portfolio and is not part of this view.')
 
 
 KNOBS = [  # params field, label, min, max, step, shown as field x scale, format
@@ -1255,7 +1305,8 @@ Object.assign(f.style, {{display: 'block', opacity: 1, position: 'fixed', inset:
 page = lambda f, t, u: st.Page(f, title=t, url_path=u)
 nav = st.navigation({'': [st.Page(home, title='Home', default=True), page(assumptions, 'Test your assumptions', 'assumptions'),
                           page(team, 'Team', 'team')],              # shown after the groups, see the css order rules
-                     'Strategy': [page(thesis, 'Investment approach', 'thesis'), page(rules, 'Rules', 'rules')],
+                     'Strategy': [page(thesis, 'Investment approach', 'thesis'), page(rules, 'Rules', 'rules'),
+                                  page(pension, 'In a pension portfolio', 'pension')],
                      'Results': [page(performance, 'Performance', 'performance'), page(live_2026, 'Live 2026', 'live-2026'),
                                  page(mandate_report, 'Sample mandate report', 'mandate-report')],
                      'Backtest & analysis': [page(annual_returns, 'Annual returns', 'annual-returns'),

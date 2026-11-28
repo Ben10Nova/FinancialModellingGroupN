@@ -3,7 +3,8 @@ from dataclasses import replace
 
 import numpy as np
 import pandas as pd
-from strategy import Params, intraday_value, load_intraday, load_live, load_prices, run, backtest, pair_targets, stats
+from strategy import (Params, intraday_value, load_intraday, load_live, load_prices, monthly, pension_mix, run, backtest,
+                      pair_targets, stats)
 
 px = load_prices()
 res = run(px)
@@ -34,6 +35,14 @@ assert np.isclose(first.net, (1 - opening_fee) * (1 + first.gross - first_day_co
 dates = pd.date_range('2020-01-31', periods=3, freq='ME')
 sample = pd.Series([-0.10, 0.02, 0.01], index=dates)
 assert np.isclose(stats(sample, sample * 0, sample)['Max drawdown (monthly)'], -0.10)
+
+# Pension page: replacing 0% is the S&P 500, replacing 100% without a fee is the strategy itself.
+r_m, b_m = monthly(res['bt'].net), monthly(res['bench_d'])
+_, none = pension_mix(r_m, res['rf_m'], b_m, 0.0, 0.0)
+assert np.allclose(none['With the strategy'], none['All in the S&P 500 TR'], equal_nan=True)
+_, full = pension_mix(r_m, res['rf_m'], b_m, 1.0, 0.0)
+assert np.allclose(full.loc[['Ann. avg return', 'Sharpe ratio', 'Beta', 'Max drawdown (monthly)'], 'With the strategy'],
+                   res['table'].loc[['Ann. avg return', 'Sharpe ratio', 'Beta', 'Max drawdown (monthly)'], 'Strategy (net)'])
 
 early = run(px, replace(Params(), end='2020-12-31'))
 assert (early['pair_year'], early['pair_now']) == (2021, ('XLP', 'XLV'))
