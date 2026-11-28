@@ -183,7 +183,7 @@ def simulate(px, p, targets, use_spy=True, lag=1, vol_budget=True):
         spread_returns[i + p.pair_vol_days + delay - 1] = weights[1:] @ day_returns[1:]
         cash = 1 - weights.sum()
         cash_rate = rf[i] + (p.fin_spread / 252 if cash < 0 else 0)
-        gross = weights @ day_returns + cash * cash_rate
+        gross = weights @ day_returns + cash * cash_rate        # weights set at close t-1 earn day t: lecture 4's position.shift(1)
         gross -= np.abs(np.minimum(weights, 0)).sum() * p.short_fee / 252
         drift = weights * (1 + day_returns) / (1 + gross)
         target = drift.copy()
@@ -196,7 +196,7 @@ def simulate(px, p, targets, use_spy=True, lag=1, vol_budget=True):
             target[0] = min(budget / spy_vol[i], p.max_lev)
         if i == 0 or (targets[i] != targets[i - 1]).any():
             target[1:] = targets[i]
-        turnover = np.abs(target - drift).sum()
+        turnover = np.abs(target - drift).sum()                 # |change in position| x cost, as in lecture 4
         rows.append((gross, gross - turnover * p.cost, turnover, target[0], np.abs(target).sum(), *target))
         weights = target
 
@@ -221,21 +221,29 @@ def wealth(r):
     return pd.concat([pd.Series(1.0, index=[w.index[0] - pd.Timedelta(days=1)]), w])
 
 
+def drawdown(w):
+    """DD_t = (HWM_t - P_t) / HWM_t with HWM_t = max_{s<=t} P_s (formula sheet). the initial $1 counts as the first peak"""
+    hwm = w.cummax().clip(lower=1)
+    return (hwm - w) / hwm
+
+
 def stats(r_m, rf_m, bench_m):
+    """monthly returns. means x12, volatilities x sqrt(12), beta not annualised (lecture 3)"""
     rf, b = rf_m.loc[r_m.index], bench_m.loc[r_m.index]
     ex, bex = r_m - rf, b - rf
-    ols = sm.OLS(ex, sm.add_constant(bex)).fit()
-    a, beta = ols.params.iloc[0], ols.params.iloc[1]
-    w = (1 + r_m).cumprod()
+    beta = ex.cov(bex) / bex.var()                              # beta = cov(R_ex, R_M,ex) / var(R_M,ex)
+    a = ex.mean() - beta * bex.mean()                           # alpha = E[R_ex] - beta E[R_M,ex]
+    eps = ex - a - beta * bex                                   # idiosyncratic part of R_ex = alpha + beta R_M,ex + eps
+    t_alpha = sm.OLS(ex, sm.add_constant(bex)).fit().tvalues.iloc[0]   # same regression, only for alpha's t-stat
     return pd.Series({
         'Ann. avg return': r_m.mean() * 12,
         'Ann. volatility': r_m.std() * np.sqrt(12),
-        'Sharpe ratio': ex.mean() / ex.std() * np.sqrt(12),
+        'Sharpe ratio': ex.mean() / ex.std() * np.sqrt(12),     # E(R - Rf) / sigma(R - Rf), monthly x sqrt(12)
         'Alpha (ann.)': a * 12,
-        'Alpha t-stat': ols.tvalues.iloc[0],
+        'Alpha t-stat': t_alpha,
         'Beta': beta,
-        'Information ratio': a / ols.resid.std() * np.sqrt(12),
-        'Max drawdown (monthly)': (w / w.cummax().clip(lower=1) - 1).min(),
+        'Information ratio': a / eps.std() * np.sqrt(12) if eps.std() > 0 else np.nan,   # IR = alpha / sigma(eps)
+        'Max drawdown (monthly)': -drawdown((1 + r_m).cumprod()).max(),
     })
 
 
@@ -254,7 +262,7 @@ def var_es(r_m, level):
 def risk_stats(r_m, rf_m, bench_m):
     """tail risk and client-facing ratios, monthly returns. var/cvar are losses (positive = loss) over one month"""
     rf, b = rf_m.loc[r_m.index], bench_m.loc[r_m.index]
-    ex, act = r_m - rf, r_m - b
+    ex, act = r_m - rf, r_m - b                                 # act = R - R_b, the tracking difference
     w = (1 + r_m).cumprod()
     S, K = r_m.skew(), r_m.kurt()                               # sample skew, excess kurtosis
     cf = lambda z: z + (z**2 - 1) * S / 6 + (z**3 - 3 * z) * K / 24 - (2 * z**3 - 5 * z) * S**2 / 36   # cornish-fisher
@@ -273,11 +281,11 @@ def risk_stats(r_m, rf_m, bench_m):
         'Worst month': r_m.min(),
         'Positive months': (r_m > 0).mean(),
         'Sortino ratio': ex.mean() / np.sqrt((ex.clip(upper=0) ** 2).mean()) * np.sqrt(12),
-        'Calmar ratio': (w.iloc[-1] ** (12 / len(r_m)) - 1) / -(w / w.cummax().clip(lower=1) - 1).min(),
+        'Calmar ratio': (w.iloc[-1] ** (12 / len(r_m)) - 1) / drawdown(w).max(),
         'Upside capture': r_m[up].mean() / b[up].mean(),
         'Downside capture': r_m[dn].mean() / b[dn].mean(),
         'Tracking error': act.std() * np.sqrt(12),
-        'Active IR (vs S&P 500 TR)': act.mean() / act.std() * np.sqrt(12) if act.std() > 0 else np.nan,
+        'Active IR (vs S&P 500 TR)': act.mean() / act.std() * np.sqrt(12) if act.std() > 0 else np.nan,   # E(R - Rb) / sigma(R - Rb)
         'Alpha t-stat, Newey-West': hac.tvalues.iloc[0] if act.std() > 0 else np.nan,
     })
 
@@ -296,7 +304,8 @@ def monte_carlo(r_m, rf_m, bench_m, months=120, paths=10_000, block=12, seed=42)
     starts = np.random.default_rng(seed).integers(0, len(X) - block + 1, size=(paths, months // block))
     sim = X[(starts[..., None] + np.arange(block)).reshape(paths, -1)]          # paths x months x 3
     W = np.cumprod(1 + sim[..., :2], axis=1)
-    dd = (W / np.maximum(np.maximum.accumulate(W, axis=1), 1) - 1).min(axis=1)
+    hwm = np.maximum(np.maximum.accumulate(W, axis=1), 1)                         # high water mark, $1 start included
+    dd = -((hwm - W) / hwm).max(axis=1)                                           # max drawdown per path (negative)
     ex = sim[..., :2] - sim[..., 2:]
     sharpe = ex.mean(axis=1) / ex.std(axis=1, ddof=1) * np.sqrt(12)
     end = W[:, -1]
