@@ -619,6 +619,9 @@ PENSION_ROWS = [('Ann. avg return', 'pct'), ('Ann. volatility', 'pct'), ('Sharpe
                 ('Change in 2008 ($)', 'm'), ('Largest fall from a peak ($)', 'm')]
 
 
+SLEEVES = [10, 25, 50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000]   # $m, choices for the equity sleeve
+
+
 def save_pension():
     ss = st.session_state
     ss['pm'] = (ss['f_pm_size'] * 1e6, ss['f_pm_share'] / 100, ss['f_pm_fee'] / 100)
@@ -631,25 +634,34 @@ def pension():
          'market exposure and crash losses come down.</p>')
     ss = st.session_state
     size, share, fee = ss.setdefault('pm', (MANDATE, .20, .005))
-    with st.form('pm_settings'):
-        c = st.columns(3, gap='large')
-        c[0].number_input('US equity sleeve ($m)', 1.0, 100_000.0, size / 1e6, 10.0, format='%.0f', key='f_pm_size')
-        c[1].slider('Share replaced by the strategy (%)', 0, 100, round(share * 100), 5, key='f_pm_share')
-        c[2].slider('Management fee on the strategy (% a year)', 0.0, 2.0, round(fee * 100, 2), 0.05, format='%.2f',
-                    key='f_pm_fee')
-        st.form_submit_button('Run', type='primary', on_click=save_pension)
+    with st.container(key='knobs'):                                # same panel as Test your assumptions; updates as you drag
+        c = st.columns(3, gap='large', vertical_alignment='bottom')
+        c[0].select_slider('US equity sleeve', SLEEVES, round(size / 1e6), key='f_pm_size', on_change=save_pension,
+                           format_func=lambda v: f'${v:,}m' if v < 1000 else f'${v / 1000:g}bn')
+        c[1].slider('Share moved into the strategy', 0, 100, round(share * 100), 5, format='%d%%', key='f_pm_share',
+                    on_change=save_pension)
+        c[2].slider('Management fee, a year', 0.0, 2.0, round(fee * 100, 2), 0.05, format='%.2f%%', key='f_pm_fee',
+                    on_change=save_pension)
     p, res = results()
     mix, t = pension_mix(monthly(res['bt'].net), res['rf_m'], monthly(res['bench_d']), share, fee, size)
     w, b = t['With the strategy'], t['All in the S&P 500 TR']
     mixed = f'{1 - share:.0%} S&amp;P 500 + {share:.0%} strategy'
-    signed = lambda v, kind: ('+' if v >= 0 else '') + num(v, kind)[0]
     dollars = lambda v: ('−' if v < 0 else '') + f'${abs(v) / 1e6:,.1f}m'          # one decimal, as on the mandate report
     html(f'<div class="hero"><p class="k">A ${size / 1e6:,.0f}m US equity sleeve from January {p.start[:4]} to the '
          f'{mix.index[-1]:%b %Y} month-end</p><p class="big">{dollars(w["Value at the end ($)"])}</p>'
          f'<p class="chg"><span class="{num(w["Value at the end ($)"] - b["Value at the end ($)"])[1]}">'
-         f'{signed(w["Value at the end ($)"] - b["Value at the end ($)"], "m")}</span><span class="dim"> against '
+         f'{("+" if w["Value at the end ($)"] >= b["Value at the end ($)"] else "") + dollars(w["Value at the end ($)"] - b["Value at the end ($)"])}</span><span class="dim"> against '
          f'{dollars(b["Value at the end ($)"])} all in the S&amp;P 500 TR &middot; 2008: '
-         f'{signed(w["Change in 2008 ($)"], "m")} instead of {signed(b["Change in 2008 ($)"], "m")}</span></p></div>')
+         f'{("+" if w["Change in 2008 ($)"] >= 0 else "") + dollars(w["Change in 2008 ($)"])} instead of '
+         f'{("+" if b["Change in 2008 ($)"] >= 0 else "") + dollars(b["Change in 2008 ($)"])}</span></p></div>')
+    if share > 0:
+        fig = lambda s: f'<span class="fig">{s}</span>'
+        d_ret = w['Ann. avg return'] - b['Ann. avg return']
+        html(f'<p>Moving {fig(f"{share:.0%}")} of the sleeve into the strategy takes its beta from {fig("1.00")} to '
+             f'{fig(num(w["Beta"], "x")[0])} and its largest month-end drawdown from {fig(num(b["Max drawdown (monthly)"])[0])} '
+             f'to {fig(num(w["Max drawdown (monthly)"])[0])}, with volatility at {fig(num(w["Ann. volatility"])[0])} against '
+             f'{fig(num(b["Ann. volatility"])[0])}. The average return changes by '
+             f'{fig(("+" if d_ret >= 0 else "−") + f"{abs(d_ret) * 100:.1f} pp")} a year after the fee.</p>')
     head = f'<tr><th></th><th>{mixed}</th><th>{SP}</th></tr>'
     body = ''.join(f'<tr><td class="label">{ROWS.get(k, k)}</td>{td(w[k], kind, "em")}{td(b[k], kind)}</tr>'
                    for k, kind in PENSION_ROWS)
