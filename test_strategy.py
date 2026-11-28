@@ -3,8 +3,8 @@ from dataclasses import replace
 
 import numpy as np
 import pandas as pd
-from strategy import (Params, intraday_value, load_intraday, load_live, load_prices, monthly, pension_mix, run, backtest,
-                      pair_targets, stats)
+from strategy import (Params, funding, funding_summary, intraday_value, load_intraday, load_live, load_prices, monthly,
+                      monte_carlo, pension_daily, pension_mc, pension_mix, run, backtest, pair_targets, stats)
 
 px = load_prices()
 res = run(px)
@@ -43,6 +43,17 @@ assert np.allclose(none['With the strategy'], none['All in the S&P 500 TR'], equ
 _, full = pension_mix(r_m, res['rf_m'], b_m, 1.0, 0.0)
 assert np.allclose(full.loc[['Ann. avg return', 'Sharpe ratio', 'Beta', 'Max drawdown (monthly)'], 'With the strategy'],
                    res['table'].loc[['Ann. avg return', 'Sharpe ratio', 'Beta', 'Max drawdown (monthly)'], 'Strategy (net)'])
+mix, _ = pension_mix(r_m, res['rf_m'], b_m)
+assert np.allclose(monthly(pension_daily(res['bt'].net, res['bench_d'])), mix)        # daily sleeve lands on the monthly one
+flat = funding(r_m, equity=0.0)                                                        # no equities: hedged, stays at 100%
+assert np.allclose(flat.funding, 1.0) and flat.top_up.sum() == 0
+short = funding(b_m * 0 - 0.01, equity=1.0, start=1.0, liab=0.0)                       # losing 1% a month: deficit, top-ups
+assert (short.top_up > 0).sum() == len(short) // 12 and (short.funding < 1).all()
+assert funding_summary(funding(b_m), 1.0)['Funding level at the end of 2008'] < 0.95   # 2008 pushed an all-S&P scheme into deficit
+tab, ph, _ = pension_mc(mix, b_m)
+mc_mix = monte_carlo(mix, res['rf_m'], b_m)
+assert np.isclose(tab.loc['Wealth of $1: median', 'With the strategy'], mc_mix[0].loc['Wealth of $1: median', 'Strategy (net)'])
+assert np.isclose(ph['beats_sp'], mc_mix[1]['beats_sp'])                                # same draws as the Monte Carlo page
 
 early = run(px, replace(Params(), end='2020-12-31'))
 assert (early['pair_year'], early['pair_now']) == (2021, ('XLP', 'XLV'))

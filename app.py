@@ -16,8 +16,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from live import board
-from strategy import (ASSETS, Params, intraday_value, load_intraday, load_live, load_prices, monthly, pair_targets, pension_mix,
-                      run, wealth)
+from strategy import (ASSETS, Params, funding, funding_summary, intraday_value, load_intraday, load_live, load_prices, monthly,
+                      pair_targets, pension_daily, pension_mc, pension_mix, run, wealth)
 from replay import replay
 from landing import landing
 from statement import statement_pdf
@@ -370,7 +370,7 @@ def num(v, kind='pct'):
     if pd.isna(v):
         return '–', ''
     v = round(float(v), 8) + 0.0
-    s = {'pct': f'{v:.1%}', 'x': f'{v:.2f}', 'usd': f'${abs(v):,.2f}', 'm': f'${abs(v) / 1e6:,.2f}m'}[kind]
+    s = {'pct': f'{v:.1%}', 'x': f'{v:.2f}', 'usd': f'${abs(v):,.2f}', 'm': f'${abs(v) / 1e6:,.2f}m', 'n': f'{v:,.0f}'}[kind]
     return ('−' + s.lstrip('-') if v < 0 else s), ('neg' if v < 0 else '')
 
 
@@ -421,6 +421,9 @@ def chart(title, series, kind='growth', h=2.9, bands=()):
     elif kind == 'drawdown':
         ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'{v:.0%}'.replace('-', '−')))
         ax.axhline(0, color=INK, lw=.8)
+    elif kind == 'level':                                          # a ratio over the years, e.g. a funding level: line at 100%
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'{v:.0%}'))
+        ax.axhline(1, color=INK, lw=.8)
     else:                                                          # one year, linear: dollar values or z-scores
         if kind == 'z':
             for b, ls in bands:
@@ -617,11 +620,36 @@ PENSION_ROWS = [('Ann. avg return', 'pct'), ('Ann. volatility', 'pct'), ('Sharpe
                 ('Max drawdown (monthly)', 'pct'), ('Return in 2008', 'pct'), ('Upside capture', 'pct'),
                 ('Downside capture', 'pct'), ('Tracking error', 'pct'), ('Value at the end ($)', 'm'),
                 ('Change in 2008 ($)', 'm'), ('Largest fall from a peak ($)', 'm')]
+FUNDING_ROWS = [('Lowest funding level', 'pct'), ('Funding level at the end of 2008', 'pct'), ('Months below 100%', 'n'),
+                ('Years with a top-up', 'n'), ('Sponsor top-ups, total ($)', 'm'), ('Largest top-up in one year ($)', 'm'),
+                ('Funding level at the end', 'pct')]
+SLEEVES = [10, 25, 50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000]   # $m, choices for the equity sleeve
+PM_DEFAULTS = dict(size=MANDATE, share=.20, fee=.005, equity=.40, start=1.0, liab=.05)
+PM_KNOBS = [  # key, label, slider args, shown as value x scale, format
+    ('share', 'Share moved into the strategy', (0, 100, 5), 100, '%d%%'),
+    ('fee', 'Management fee, a year', (0.0, 2.0, 0.05), 100, '%.2f%%'),
+    ('equity', 'US equities, share of the scheme’s assets', (10, 80, 5), 100, '%d%%'),
+    ('start', 'Funding level in January 2006', (70, 130, 5), 100, '%d%%'),
+    ('liab', 'Liability growth, a year', (2.0, 8.0, 0.25), 100, '%.2f%%')]
 
 
 def save_pension():
     ss = st.session_state
-    ss['pm'] = (ss['f_pm_size'] * 1e6, ss['f_pm_share'] / 100, ss['f_pm_fee'] / 100)
+    ss['pm'] = {'size': ss['f_pm_size'] * 1e6, **{k: ss[f'f_pm_{k}'] / sc for k, _, _, sc, _ in PM_KNOBS}}
+
+
+def reset_pension():
+    ss = st.session_state
+    ss['pm'] = dict(PM_DEFAULTS)
+    for k in [k for k in ss if k.startswith('f_pm_')]:
+        del ss[k]
+
+
+@st.cache_data(show_spinner='Simulating 10,000 paths ...')
+def get_pension_mc(code, share, fee, equity, start, liab):
+    res = get_results(code, **asdict(DEFAULTS))
+    mix, _ = pension_mix(monthly(res['bt'].net), res['rf_m'], monthly(res['bench_d']), share, fee)
+    return pension_mc(mix, monthly(res['bench_d']), equity=equity, start=start, liab=liab)
 
 
 def pension():
@@ -630,36 +658,100 @@ def pension():
          'them. It runs at about the volatility of the S&amp;P 500, so the swap leaves total risk roughly where it was, while '
          'market exposure and crash losses come down.</p>')
     ss = st.session_state
-    size, share, fee = ss.setdefault('pm', (MANDATE, .20, .005))
-    with st.form('pm_settings'):
-        c = st.columns(3, gap='large')
-        c[0].number_input('US equity sleeve ($m)', 1.0, 100_000.0, size / 1e6, 10.0, format='%.0f', key='f_pm_size')
-        c[1].slider('Share replaced by the strategy (%)', 0, 100, round(share * 100), 5, key='f_pm_share')
-        c[2].slider('Management fee on the strategy (% a year)', 0.0, 2.0, round(fee * 100, 2), 0.05, format='%.2f',
-                    key='f_pm_fee')
-        st.form_submit_button('Run', type='primary', on_click=save_pension)
+    if not isinstance(ss.get('pm'), dict):                         # first visit, or a session from before the funding view
+        ss['pm'] = dict(PM_DEFAULTS)
+    pm = ss['pm']
+    with st.container(key='knobs'):                                # same panel as Test your assumptions; updates as you drag
+        top, bottom = st.columns(3, gap='large', vertical_alignment='bottom'), st.columns(3, gap='large', vertical_alignment='bottom')
+        top[0].select_slider('US equity sleeve', SLEEVES, round(pm['size'] / 1e6), key='f_pm_size', on_change=save_pension,
+                             format_func=lambda v: f'${v:,}m' if v < 1000 else f'${v / 1000:g}bn')
+        for col, (k, label, (lo, hi, step), sc, fmt) in zip(top[1:] + bottom, PM_KNOBS):
+            v = pm[k] * sc
+            col.slider(label, lo, hi, round(v) if isinstance(lo, int) else round(v, 2), step, format=fmt, key=f'f_pm_{k}',
+                       on_change=save_pension)
+        st.button('Reset to the defaults', type='tertiary', on_click=reset_pension)
+    size, share, fee, equity, start, liab = (pm[k] for k in ('size', 'share', 'fee', 'equity', 'start', 'liab'))
     p, res = results()
-    mix, t = pension_mix(monthly(res['bt'].net), res['rf_m'], monthly(res['bench_d']), share, fee, size)
+    bench_m = monthly(res['bench_d'])
+    mix, t = pension_mix(monthly(res['bt'].net), res['rf_m'], bench_m, share, fee, size)
     w, b = t['With the strategy'], t['All in the S&P 500 TR']
     mixed = f'{1 - share:.0%} S&amp;P 500 + {share:.0%} strategy'
-    signed = lambda v, kind: ('+' if v >= 0 else '') + num(v, kind)[0]
-    dollars = lambda v: ('−' if v < 0 else '') + f'${abs(v) / 1e6:,.1f}m'          # one decimal, as on the mandate report
+    fig = lambda s_: f'<span class="fig">{s_}</span>'
+    dollars = lambda v: ('−' if v < 0 else '') + (f'${abs(v) / 1e6:,.1f}m' if abs(v) >= 1e6 or v == 0   # as on the mandate report
+                                                   else f'${abs(v) / 1e3:,.0f}k')
+    plus = lambda v: ('+' if v >= 0 else '') + dollars(v)
+
+    # 1. the sleeve
     html(f'<div class="hero"><p class="k">A ${size / 1e6:,.0f}m US equity sleeve from January {p.start[:4]} to the '
          f'{mix.index[-1]:%b %Y} month-end</p><p class="big">{dollars(w["Value at the end ($)"])}</p>'
          f'<p class="chg"><span class="{num(w["Value at the end ($)"] - b["Value at the end ($)"])[1]}">'
-         f'{signed(w["Value at the end ($)"] - b["Value at the end ($)"], "m")}</span><span class="dim"> against '
-         f'{dollars(b["Value at the end ($)"])} all in the S&amp;P 500 TR &middot; 2008: '
-         f'{signed(w["Change in 2008 ($)"], "m")} instead of {signed(b["Change in 2008 ($)"], "m")}</span></p></div>')
+         f'{plus(w["Value at the end ($)"] - b["Value at the end ($)"])}</span><span class="dim"> against '
+         f'{dollars(b["Value at the end ($)"])} all in the S&amp;P 500 TR &middot; 2008: {plus(w["Change in 2008 ($)"])} '
+         f'instead of {plus(b["Change in 2008 ($)"])}</span></p></div>')
+    if share > 0:
+        d_ret = w['Ann. avg return'] - b['Ann. avg return']
+        html(f'<p>Moving {fig(f"{share:.0%}")} of the sleeve into the strategy takes its beta from {fig("1.00")} to '
+             f'{fig(num(w["Beta"], "x")[0])} and its largest month-end drawdown from {fig(num(b["Max drawdown (monthly)"])[0])} '
+             f'to {fig(num(w["Max drawdown (monthly)"])[0])}, with volatility at {fig(num(w["Ann. volatility"])[0])} against '
+             f'{fig(num(b["Ann. volatility"])[0])}. The average return changes by '
+             f'{fig(("+" if d_ret >= 0 else "−") + f"{abs(d_ret) * 100:.1f} pp")} a year after the fee.</p>')
     head = f'<tr><th></th><th>{mixed}</th><th>{SP}</th></tr>'
-    body = ''.join(f'<tr><td class="label">{ROWS.get(k, k)}</td>{td(w[k], kind, "em")}{td(b[k], kind)}</tr>'
-                   for k, kind in PENSION_ROWS)
-    html(f'<table class="plain">{head}{body}</table>')
-    chart('Growth of $1, log scale', [(mixed, wealth(mix), S1), (SP, wealth(monthly(res['bench_d'])), S2)])
-    chart('Drawdown, month-end', [(mixed, wealth(mix), S1), (SP, wealth(monthly(res['bench_d'])), S2)], kind='drawdown', h=2.2)
-    note(f'Backtest {p.start[:4]}&ndash;{p.end[:4]}, monthly returns. The strategy slice is net of the modelled trading, '
-         'financing and borrow costs and of the management fee set above, charged monthly. The S&amp;P 500 slice is held at no '
-         'cost. The split goes back to target at each month-end. Interest-rate risk on the liabilities stays with the '
-         'scheme&rsquo;s liability-hedging portfolio and is not part of this view.')
+    html('<table class="plain">' + head + ''.join(f'<tr><td class="label">{ROWS.get(k, k)}</td>{td(w[k], kind, "em")}'
+                                                  f'{td(b[k], kind)}</tr>' for k, kind in PENSION_ROWS) + '</table>')
+    chart('Growth of $1, log scale', [(mixed, wealth(mix), S1), (SP, wealth(bench_m), S2)])
+    chart('Drawdown, month-end', [(mixed, wealth(mix), S1), (SP, wealth(bench_m), S2)], kind='drawdown', h=2.2)
+
+    # 2. the crises, day by day
+    html('<h4>Through the crises</h4>')
+    daily = pension_daily(res['bt'].net, res['bench_d'], share, fee)
+    eps = [e for e in CRISES if pd.Timestamp(e[1]) >= daily.index[0] and pd.Timestamp(e[2]) <= daily.index[-1]]
+    if eps:
+        ret = lambda r, a_, b_: (1 + r.loc[a_:b_].iloc[1:]).prod() - 1               # from the peak close to the trough close
+        rows = ''
+        for name, a_, b_, *_ in eps:
+            m_, s_ = ret(daily, a_, b_), ret(res['bench_d'], a_, b_)
+            rows += (f'<tr><td class="label">{name}<br><span class="dim">{pd.Timestamp(a_):%b %Y} &rarr; '
+                     f'{pd.Timestamp(b_):%b %Y}</span></td>{td(m_, "pct", "em")}{td(s_)}{td((m_ - s_) * size, "m")}</tr>')
+        html(f'<table class="plain"><tr><th></th><th>{mixed}</th><th>{SP}</th><th>Difference on ${size / 1e6:,.0f}m</th></tr>'
+             f'{rows}</table>')
+        note('Each S&amp;P 500 peak-to-trough episode since 2007, daily closes. The difference is what the sleeve with the '
+             f'strategy lost less (or more) than the S&amp;P 500, on a ${size / 1e6:,.0f}m sleeve at the peak.')
+
+    # 3. the funding level
+    html('<h4>The funding level</h4>')
+    liabilities = size / equity / start                           # the sleeve is `equity` of the assets, assets = start x liabilities
+    f_w, f_b = funding(mix, equity, start, liab), funding(bench_m, equity, start, liab)
+    fw, fb = funding_summary(f_w, liabilities), funding_summary(f_b, liabilities)
+    html(f'<p>A scheme with {fig(f"${liabilities / 1e6:,.0f}m")} of liabilities, {fig(f"{start:.0%}")} funded in January '
+         f'{p.start[:4]}, holding {fig(f"{equity:.0%}")} of its assets in this US equity sleeve and the rest in a portfolio that '
+         f'hedges its liabilities. With the strategy its funding level fell no lower than {fig(num(fw["Lowest funding level"])[0])}, '
+         f'against {fig(num(fb["Lowest funding level"])[0])} all in the S&amp;P 500, and the sponsor had to top up '
+         f'{fig(dollars(fw["Sponsor top-ups, total ($)"]))} instead of {fig(dollars(fb["Sponsor top-ups, total ($)"]))}.</p>')
+    html('<table class="plain">' + head + ''.join(f'<tr><td class="label">{k}</td>{td(fw[k], kind, "em")}{td(fb[k], kind)}</tr>'
+                                                  for k, kind in FUNDING_ROWS) + '</table>')
+    at_start = lambda f: pd.concat([pd.Series(start, index=[f.index[0] - pd.offsets.MonthEnd(1)]), f.funding])
+    chart('Funding level, month-end', [(mixed, at_start(f_w), S1), (SP, at_start(f_b), S2)], kind='level', h=2.6)
+    note(f'Funding level = assets / liabilities. Liabilities grow by {liab:.2%} a year, and the hedging portfolio earns the '
+         'same, so interest-rate moves cancel out and only the equity sleeve moves the funding level. The asset mix goes back '
+         'to target at each month-end. At each year-end the sponsor pays one seventh of any deficit, as the US Pension '
+         'Protection Act spreads a shortfall over seven years. Benefit payments and new accruals are left out.')
+
+    # 4. the next ten years
+    html('<h4>The next ten years</h4>')
+    if len(mix) < 24:
+        return
+    mc, mc_head, fan = get_pension_mc(CODE, share, fee, equity, start, liab)
+    html('<p>10,000 ten-year paths built from random 12-month blocks of the backtest, the sleeve with the strategy and the '
+         'S&amp;P 500 taken from the same months, with the funding rules above on every path. It resamples our own history '
+         'and inherits its optimism: a range of outcomes if the next decade looks like the last two, not a forecast.</p>')
+    kind = lambda i: 'm' if i.startswith('Wealth') else 'pct'
+    scale = lambda i, v: v * size if i.startswith('Wealth') else v
+    html('<table class="plain">' + head + ''.join(
+        f'<tr><td class="label">{i.replace("Wealth of $1", f"Sleeve value (${size / 1e6:,.0f}m today)")}</td>'
+        + ''.join(td(scale(i, v), kind(i), 'em' if c == 'With the strategy' else '') for c, v in r.items()) + '</tr>'
+        for i, r in mc.iterrows()) + '</table>')
+    note(f'The sleeve with the strategy ends ahead of the sleeve all in the S&amp;P 500 in {mc_head["beats_sp"]:.0%} of paths.')
+    fan_chart(fan, mixed)
 
 
 KNOBS = [  # params field, label, min, max, step, shown as field x scale, format
@@ -1013,10 +1105,10 @@ def rules():
                          'shorts.', rule_costs)])
 
 
-def fan_chart(fan):
+def fan_chart(fan, label=PF):
     """monte carlo fan: a few single paths, 5-95% and 25-75% bands and the median, S&P median and 5/95% for comparison"""
     html(f'<p class="chart-head"><b>$1 over 10 years, 10,000 simulated paths (log scale)</b>'
-         f'<span><i style="background:{S1}"></i>{PF}</span><span><i style="background:{S2}"></i>{SP}</span></p>')
+         f'<span><i style="background:{S1}"></i>{label}</span><span><i style="background:{S2}"></i>{SP}</span></p>')
     q = np.concatenate([np.ones((5, 1, 2)), fan['q']], axis=1)              # every path starts at $1
     t = np.arange(q.shape[1]) / 12
     fig, ax = plt.subplots(figsize=(8, 3.4))

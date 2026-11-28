@@ -315,6 +315,81 @@ def pension_mix(r_m, rf_m, bench_m, share=0.20, fee=0.005, size=100e6):
     return mix, pd.DataFrame({'With the strategy': col(mix), 'All in the S&P 500 TR': col(b)})
 
 
+def pension_daily(net_d, bench_d, share=0.20, fee=0.005):
+    """the same sleeve day by day: back to the target split at each month-end, weights drift in between, the month's fee
+    is taken at the month-end close. month-end values equal pension_mix exactly; used for the crisis windows"""
+    b = bench_d.loc[net_d.index]
+    month = net_d.index.to_period('M')
+    rel = share * (1 + net_d).groupby(month).cumprod() + (1 - share) * (1 + b).groupby(month).cumprod()
+    last = ~month.duplicated(keep='last')
+    rel[last] -= share * fee / 12
+    start = rel[last].cumprod().shift(1, fill_value=1.0)                 # sleeve value at the start of each month
+    value = pd.Series(start.to_numpy(), index=month[last]).reindex(month).to_numpy() * rel
+    return value / value.shift(1, fill_value=1.0) - 1
+
+
+def funding(r_m, equity=0.40, start=1.0, liab=0.05, years=7):
+    """funding level = assets / liabilities, month by month. `equity` of the assets is the us equity sleeve (returns r_m),
+    the rest a liability-hedging portfolio that earns what the liabilities grow by, so interest-rate moves cancel out.
+    liabilities grow at `liab` a year; benefit payments and new accruals are left out. back to `equity` at each month-end.
+    at each december month-end the sponsor pays down a deficit by 1/`years` (the us pension protection act amortises a
+    shortfall over 7 years). returns the funding level and the sponsor's top-ups as a share of the starting liabilities"""
+    c = (1 + liab) ** (1 / 12) - 1
+    fr, level, top_up = start, [], []
+    for d, r in r_m.items():
+        fr *= 1 + equity * (r - c) / (1 + c)                         # assets earn equity * r + (1 - equity) * c
+        pay = (1 - fr) / years if d.month == 12 and fr < 1 else 0.0
+        fr += pay
+        level.append(fr)
+        top_up.append(pay)
+    liabilities = (1 + c) ** np.arange(1, len(r_m) + 1)              # relative to the start
+    return pd.DataFrame({'funding': level, 'top_up': np.array(top_up) * liabilities}, index=r_m.index)
+
+
+def funding_summary(f, liabilities):
+    """the funding path in numbers; top-ups in dollars for starting liabilities of `liabilities`"""
+    y08 = f.funding[f.index.year == 2008]
+    return pd.Series({
+        'Lowest funding level': f.funding.min(),
+        'Funding level at the end of 2008': y08.iloc[-1] if len(y08) else np.nan,
+        'Months below 100%': int((f.funding < 1).sum()),
+        'Funding level at the end': f.funding.iloc[-1],
+        'Sponsor top-ups, total ($)': f.top_up.sum() * liabilities,
+        'Largest top-up in one year ($)': f.top_up.max() * liabilities,
+        'Years with a top-up': int((f.top_up > 0).sum()),
+    })
+
+
+def pension_mc(mix_m, bench_m, months=120, paths=10_000, block=12, seed=42, equity=0.40, start=1.0, liab=0.05, years=7):
+    """block bootstrap of the sleeve with the strategy and the sleeve all in the s&p 500 tr (12-month blocks, both from the
+    same months, same draws as monte_carlo), and the funding level on every path. funding rules as in funding()"""
+    X = np.column_stack([mix_m, bench_m.loc[mix_m.index]])
+    starts = np.random.default_rng(seed).integers(0, len(X) - block + 1, size=(paths, months // block))
+    sim = X[(starts[..., None] + np.arange(block)).reshape(paths, -1)]          # paths x months x (with strategy, s&p)
+    W = np.cumprod(1 + sim, axis=1)
+    c = (1 + liab) ** (1 / 12) - 1
+    fr, low, paid = np.full((paths, 2), start), np.full((paths, 2), start), np.zeros((paths, 2))
+    below90 = np.zeros((paths, 2), dtype=bool)
+    for t in range(sim.shape[1]):
+        fr = fr * (1 + equity * (sim[:, t] - c) / (1 + c))
+        if t % 12 == 11:                                                         # once a year, as in funding()
+            pay = np.where(fr < 1, (1 - fr) / years, 0.0)
+            fr, paid = fr + pay, paid + pay * (1 + c) ** (t + 1)
+        low, below90 = np.minimum(low, fr), below90 | (fr < 0.9)
+    pct = lambda a, k: np.percentile(a, k, axis=0)
+    table = pd.DataFrame({
+        'Wealth of $1: 5th percentile': pct(W[:, -1], 5), 'Wealth of $1: median': pct(W[:, -1], 50),
+        'Wealth of $1: 95th percentile': pct(W[:, -1], 95),
+        'Funding level after 10 years: median': pct(fr, 50), 'Lowest funding level: 5th percentile (bad case)': pct(low, 5),
+        'Probability funding falls below 90%': below90.mean(axis=0),
+        'Probability of any sponsor top-up': (paid > 0).mean(axis=0),
+        'Sponsor top-ups, share of liabilities: 95th percentile': pct(paid, 95),
+    }, index=['With the strategy', 'All in the S&P 500 TR']).T
+    head = dict(beats_sp=(W[:, -1, 0] > W[:, -1, 1]).mean())
+    fan = dict(q=np.percentile(W, [5, 25, 50, 75, 95], axis=0), paths=W[:40, :, 0])
+    return table, head, fan
+
+
 def rolling_greeks(r_m, rf_m, bench_m, n=60):
     """60-month rolling alpha (ann.) and beta, as in the lecture's rolling_greeks"""
     rf = rf_m.loc[r_m.index]
